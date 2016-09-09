@@ -47,7 +47,7 @@ def parse_neuroon_stages():
     # Drop the columns used for stage_shift calculation and the timestamp since it's the index now
     neuroon_stages.drop(['stage_start', 'stage_end', 'stage'], axis = 1, inplace = True)
     
-    neuroon_stages.to_csv('neuroon_hipnogram.csv', index = False)
+    neuroon_stages.to_csv('parsed_data/' + 'neuroon_hipnogram.csv', index = False)
 
     return neuroon_stages
 
@@ -109,7 +109,7 @@ def parse_psg_stages():
 
     psg_stages.drop(['hour', 'order', 'timestamp', 'stage'], axis = 1, inplace = True)
 
-    psg_stages.to_csv('psg_hipnogram.csv', index = False)
+    psg_stages.to_csv('parsed_data/' +'psg_hipnogram.csv', index = False)
     return psg_stages
 
 

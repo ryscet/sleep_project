@@ -3,6 +3,10 @@
 Created on Mon Aug 29 11:05:04 2016
 
 @author: ryszardcetnarski
+
+Open the raw data and parse it into pandas series and a numpy array of slices. Save the results in parsed_data folder.
+analyze.py and cross_correlate.py use the data from parsed_data folder.
+
 """
 
 import parse_hipnogram as ph
@@ -10,41 +14,75 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from itertools import tee
-import pyedflib
-import deepdish as dd
 import h5py
+
 
 psg_hipno = ph.parse_psg_stages()
 noo_hipno = ph.parse_neuroon_stages()
+    
+def RunAll():
+    psg_channel_names = ['O2-A1', 'O1-A2', 'F4-A1', 'C4-A1', 'C3-A2']
+    for name in psg_channel_names:
+        print(name)
+        parse_psg(name)
+        
+    parse_neuroon()
 
 def parse_neuroon():
 
 
-    neuroon = pd.read_csv('neuroon-signals/night_01/neuroon_signal.csv', dtype = {'signal': np.int32})
+    neuroon = pd.Series.from_csv('neuroon-signals/night_01/neuroon_signal.csv',header = 0, infer_datetime_format=True)
+    neuroon.index = pd.to_datetime(neuroon.index.astype(int), unit='ms') + pd.Timedelta(hours = 2)
     
-    neuroon['timestamp'] = pd.to_datetime(neuroon['timestamp'].astype(int), unit='ms', utc=True) + pd.Timedelta(hours = 2)
-    neuroon.set_index(neuroon['timestamp'], inplace = True, drop = True)
-    
+    # now in nanoVolts, scale to microVolts
+    neuroon = neuroon / 1000.0
+
+        
+    # Cut the common window of time from neuroon and psg signals
     # Neuroon starts later and ends earlier than psg. 
     # To get window of time covered by both recordings, select the first time recorded of psg and last time recorded by neuroon
     
-    #neuroon = neuroon.loc[psg_hipno.head(1).index.values[0] : noo_hipno.tail(1).index.values[0], 'signal']
-    neuroon = neuroon.loc[psg_hipno.head(1).index.values[0] : psg_hipno.head(2).index.values[1]]
+    neuroon = neuroon.loc[psg_hipno.head(1).index.values[0] : noo_hipno.tail(1).index.values[0]]
+    
+    #neuroon = neuroon.loc[psg_hipno.head(1).index.values[0] : psg_hipno.head(2).index.values[1]]
     
     # get the signal duration time
     sig_duration = np.array(neuroon.tail(1).index.values[0] - neuroon.head(1).index.values[0],dtype='timedelta64[ms]').astype(int)
 
-    #sampling_freq_hz = int(round(1000.0 / (sig_duration / len(neuroon)), 1))
+    # Create slices for analysis: frequency analysis, cross-correlation, pca    
+    slices =create_slices(neuroon, sig_duration, 'neuroon')
     
-    slices = create_slices(neuroon, sig_duration )
+    neuroon.to_csv('parsed_data/neuroon_parsed.csv')
     
-    return slices
+    return neuroon,slices
+    
+def parse_psg(channel = 'F3-A2'):
+    path = '/Users/ryszardcetnarski/Desktop/sleep_project/neuroon-signals/night_01/psg_signal3.h5'
+    
+    with h5py.File(path,'r') as hf:
+        signal = np.array(hf.get(channel))
+        timestamp = pd.to_datetime(np.array(hf.get('timestamp')))
+        
+    psg_channel = pd.Series(data = signal, index = timestamp, name = channel, dtype = np.int32)
+        
+        # Cut the common window of time from neuroon and psg signals
+    psg_channel = psg_channel.loc[psg_hipno.head(1).index.values[0] : noo_hipno.tail(1).index.values[0]]
+        
+        # get the signal duration time
+    sig_duration = np.array(psg_channel.tail(1).index.values[0] - psg_channel.head(1).index.values[0],dtype='timedelta64[ms]').astype(int)
+
+
+    # Create slices for analysis: frequency analysis, cross-correlation, pca    
+    slices = create_slices(psg_channel, sig_duration, 'psg_' + channel)
+
+    psg_channel.to_csv('parsed_data/psg_' + channel +'.csv')
+
+
+    return psg_channel, slices
 
    
 
-
-    
-def create_slices(signal, sig_duration):
+def create_slices(signal, sig_duration, psg_or_neuroon):
     
 
     # in milliseconds
@@ -57,68 +95,13 @@ def create_slices(signal, sig_duration):
     
     slices = []
     for start, end in pairwise(date_rng):
-        #slices.append(signal.loc[start:end, 'signal'].as_matrix())
-        slices.append(signal.loc[start:end, 'signal'])
-    
-    #return np.array(slices)
+        slices.append(signal.loc[start:end])
+        
+    slices = np.array(slices)
+    np.save('parsed_data/' + psg_or_neuroon + '_slices', slices)
+   
     return np.array(slices)
 
-    
-    
-def edf_to_hdf():
-    """Opens the psg edf file and parses it into a hdf5 database - this way a single channel can be loaded."""
-    
-    path = '/Users/ryszardcetnarski/Desktop/sleep_project/neuroon-signals/night_01/psg_signal.edf'
-    f = pyedflib.EdfReader(path)
-
-    signal_labels = f.getSignalLabels()
-        
-    signal_dict = {}
-    #print('Channels:')
-    for idx, name in enumerate(signal_labels):
-        print(name.decode("utf-8"))
-        signal_dict[name.decode("utf-8")] = f.readSignal(idx)
-    
-    # Create a timestamp array which will be common to all psg recorded signals
-    # All the sampling frequencies are the same, for eeg and non-eeg_signals
-    sig_freq = f.getSampleFrequency(0)
-    # Get the time of the first sample, also common to all signals
-    first_sample_time = f.getStartdatetime()
-
-    # Divide 1000 by signal frequency to get sampling interval
-    # Construct an array of datetimes starting at first sample time and incrementing by sampling interval
-    sig_timestamp = pd.date_range(first_sample_time, periods= len(signal_dict[next(signal_dict.__iter__())]), freq= str(int(1000/sig_freq )) + 'ms')
-    
-    
-    # Store time info in the dict to be converted to hdf    
-    # convert datetime array to unix_time
-    signal_dict['timestamp'] = sig_timestamp.astype(np.int64)
-
-    # Close edf reader to avoid errors on consecutive runs
-    f._close()
-    
-    dict_to_hdf(signal_dict)
-    
-    return signal_dict
-
-def dict_to_hdf(psg):
-    path = '/Users/ryszardcetnarski/Desktop/sleep_project/neuroon-signals/night_01/psg_signal3.h5'
- 
-    with h5py.File(path, 'w') as hf:
-
-        for key, value in psg.items():
-            print(key)
-            hf.create_dataset(key, data = value)
-            
-            
-def load_psg_hdf(channel = 'F3-A2'):
-    path = '/Users/ryszardcetnarski/Desktop/sleep_project/neuroon-signals/night_01/psg_signal3.h5'
-    
-    with h5py.File(path,'r') as hf:
-        signal = np.array(hf.get(channel))
-        timestamp = pd.datetime(np.array(hf.get('timestamp')))
-        
-    return timestamp[0:100]
     
     
 def pairwise(iterable):
