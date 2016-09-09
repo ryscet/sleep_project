@@ -11,32 +11,30 @@ import matplotlib.pyplot as plt
 from scipy import signal
 import numpy as np
 import pandas as pd
-import explore_eeg as ee
-import parse_hipnogram as ph
+import cross_correlate as cs
 
 
-#if 'psg_hipno' not in globals():
-#    print('-----loading------')
+
+def RunAll():
+    for channel in ['O2-A1', 'O1-A2', 'F4-A1', 'C4-A1', 'C3-A2']:
+#    explore_eeg(channel)
+        explore_eeg(channel)
+    #print(channel)
+
+#Parse all psg channels using
+#def parallel_explore():
+#    num_cores = multiprocessing.cpu_count()
+#    Parallel(n_jobs=num_cores)(delayed(RunAll)(name) for name in ['O2-A1', 'O1-A2', 'F4-A1', 'C4-A1', 'C3-A2'])
 #    
-#    psg_hipno = ph.parse_psg_stages()
-#    noo_hipno = ph.parse_neuroon_stages()
-#        
-#    psg, psg_slices = ee.parse_psg()
-#    neuroon, neuroon_slices = ee.parse_neuroon()
-#    
-#else:
-#    print('all good')
-
-
 
 def explore_slices(channel):
+    print(0)
+    psg_slices = np.load('parsed_data/psg_'+ channel + '_slices.npy')
+    neuroon_slices = np.load('parsed_data/neuroon_slices.npy')
     
-    psg_slices = np.load('/Users/ryszardcetnarski/Desktop/sleep_project/parsed_data/psg_'+ channel + '_slices.npy')
-    neuroon_slices = np.load('/Users/ryszardcetnarski/Desktop/sleep_project/parsed_data/neuroon_slices.npy')
-    
-    psg = pd.Series.from_csv('/Users/ryszardcetnarski/Desktop/sleep_project/parsed_data/psg_' + channel + '.csv')
-    neuroon = pd.Series.from_csv('/Users/ryszardcetnarski/Desktop/sleep_project/parsed_data/neuroon_parsed.csv')
-
+    psg = pd.Series.from_csv('parsed_data/psg_' + channel + '.csv')
+    neuroon = pd.Series.from_csv('parsed_data/neuroon_parsed.csv')
+    print(1)
     # FFT for psg
     fig, axes = plt.subplots(2, figsize = (40,40))
     fig.suptitle(channel)
@@ -60,7 +58,7 @@ def explore_slices(channel):
     axes2[0].plot(f_non, np.log(Pxx_non), c = 'g')
     # Plot the power spectrum of the slices
     g = sns.tsplot(data=np.log(Pxx_no_slices[:,0 : np.argmax(f_no_slices > 60)]), time = f_no_slices[0 : np.argmax(f_no_slices > 60)], err_style="unit_traces",  condition = 'no', ax = axes2[1], color = 'g')    
-
+    print(2)
     for ax1, ax2 in zip(axes, axes2):
         ax1.set_ylabel('Power density')
         ax2.set_ylabel('Power density')
@@ -68,24 +66,43 @@ def explore_slices(channel):
         ax1.set_xlabel('Frequency')
         ax2.set_xlabel('Frequency')
         
-    fig.savefig('/Users/ryszardcetnarski/Desktop/sleep_project/figures/psg_fft_'+ channel +'.pdf')
-    fig2.savefig('/Users/ryszardcetnarski/Desktop/sleep_project/figures/neuroon_fft.pdf')
+    fig.savefig('figures/psg_fft_'+ channel +'.pdf')
+    fig2.savefig('figures/neuroon_fft.pdf')
     
     
-def RunAll():
-    psg_channel_names = ['O2-A1', 'O1-A2', 'F4-A1', 'C4-A1', 'C3-A2']
-    for name in psg_channel_names:
-        print(name)
-        explore_eeg(name)
-        
 def explore_eeg(channel):
-    fig, axes = plt.subplots(2)
+    #fig, axes = plt.subplots()
     
-    psg = pd.Series.from_csv('/Users/ryszardcetnarski/Desktop/sleep_project/parsed_data/psg_' + channel + '.csv')
-    neuroon = pd.Series.from_csv('/Users/ryszardcetnarski/Desktop/sleep_project/parsed_data/neuroon_parsed.csv')
+  #  psg = pd.Series.from_csv('parsed_data/psg_' + channel + '.csv')
+  #  neuroon = pd.Series.from_csv('parsed_data/neuroon_parsed.csv')
     
-    axes[0].plot((neuroon - neuroon.mean())/ neuroon.std(), color = 'b', alpha = 0.7)
-    axes[1].plot((psg - psg.mean())/ psg.std(), color = 'r', alpha = 0.7)
+    #psg_slices = np.load('parsed_data/1_hour_psg_' + channel + '_slices.npy')
+    #neuroon_slices = np.load('parsed_data/1_hour_neuroon_slices.npy')
+    
+    global psg
+    global neuroon
+    
+    psg2 = psg.rolling(window=2,center=False).mean()
+    neuroon2 = neuroon.rolling(window=2,center=False).mean()
+    
+    psg2 = (psg2 - psg2.mean()) / psg2.std()
+    neuroon2 = (neuroon2 - neuroon2.mean()) / neuroon2.std()
+    
+    #psg2 = psg2 / psg2.mean()
+    #neuroon2 = neuroon2 / neuroon2.mean()
+    
+    neuroon2 = neuroon2.resample('10ms').mean()
+    psg2 = psg2.resample('10ms').mean()
+    
+    neuroon2 = neuroon2.iloc[int(0 + (0.43 * len(neuroon2))) :int(0 + (0.43 * len(neuroon2))) + 1000]
+    psg2 = psg2.iloc[int(0 + (0.43 * len(psg2))) : int(0 + (0.43 * len(psg2))) + 1000]
+    
+    cs.CrossCorrelate(neuroon2,psg2, 600, 1, channel)
+    
+    # Todo, repeat the cc on many short samples and save the averages
+    
+  #  axes.plot(neuroon2, color = 'b', alpha = 0.7)
+ #   axes.plot(psg2, color = 'r', alpha = 0.7)
     
     
     

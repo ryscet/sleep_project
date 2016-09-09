@@ -13,11 +13,11 @@ from scipy import signal
 
 
 
-if 'psg_slices' not in globals():
-    print('-----loading------')
-    
-    psg, psg_slices = ee.parse_psg()
-    neuroon, neuroon_slices = ee.parse_neuroon()
+#if 'psg_slices' not in globals():
+#    print('-----loading------')
+#    
+#    psg, psg_slices = ee.parse_psg()
+#    neuroon, neuroon_slices = ee.parse_neuroon()
     
 def cross_corr_frequency():
     f_psg_slices, Pxx_psg_slices = signal.welch(psg_slices, 200, nperseg=256, noverlap = 128) 
@@ -45,8 +45,8 @@ def CrossCorrelate(x,y, absolute_lag, binsize, info):
     print(info)
     f, axes = plt.subplots(3)
     f.suptitle(str(info) + '_hz' )
-    axes[0].plot(x,'r', label = 'psg')
-    axes[0].plot(y, 'b', label = 'neuroon')
+    axes[0].plot(x,'r', label = 'psg', alpha = 0.5)
+    axes[0].plot(y, 'b', label = 'neuroon', alpha = 0.5)
 
   #  print(len(x))
 

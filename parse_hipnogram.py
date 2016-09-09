@@ -6,19 +6,15 @@ Created on Fri Aug 26 12:47:44 2016
 """
 
 import numpy as np
-from scipy import signal
 import pandas as pd
-import pyedflib as el
-from datetime import datetime, timedelta
 from matplotlib import pyplot as plt
-import seaborn as sns
 
 
 stage_to_num = {'W':0, 'R':1, 'N1':2 , 'N2':3, 'N3':4 }
 num_to_stage = {0: 'wake', 1 : 'rem', 2 :'N1', 3 : 'N2', 4: 'N4'}
 
 def parse_neuroon_stages():
-    neuroon_stages = pd.read_csv('/Users/ryszardcetnarski/Desktop/sleep_project/neuroon-signals/night_01/neuroon_stages.csv', index_col = 0)
+    neuroon_stages = pd.read_csv('neuroon_signals/night_01/neuroon_stages.csv', index_col = 0)
 
     # add two hours because time was saved in a different timezone
     neuroon_stages['timestamp'] = pd.to_datetime(neuroon_stages['timestamp'].astype(int), unit='ms', utc=True) + pd.Timedelta(hours = 2)
@@ -53,7 +49,7 @@ def parse_neuroon_stages():
 
 
 def parse_psg_stages():
-    psg_stages = pd.read_csv('/Users/ryszardcetnarski/Desktop/sleep_project/neuroon-signals/night_01/psg_stages.csv', \
+    psg_stages = pd.read_csv('neuroon_signals/night_01/psg_stages.csv', \
                              header = None, names = ['timestamp', 'stage'])
 
     # Select only the rows describing the sleep stage

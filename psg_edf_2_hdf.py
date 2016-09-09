@@ -17,7 +17,7 @@ import numpy as np
 def edf_to_hdf():
     """Opens the psg edf file and parses it into a hdf5 database - this way a single channel can be loaded."""
     
-    path = '/Users/ryszardcetnarski/Desktop/sleep_project/neuroon-signals/night_01/psg_signal.edf'
+    path = 'neuroon_signals/night_01/psg_signal.edf'
     f = pyedflib.EdfReader(path)
 
     signal_labels = f.getSignalLabels()
@@ -51,7 +51,7 @@ def edf_to_hdf():
     return signal_dict
 
 def dict_to_hdf(psg):
-    path = '/Users/ryszardcetnarski/Desktop/sleep_project/neuroon-signals/night_01/psg_signal3.h5'
+    path = 'neuroon_signals/night_01/psg_signal3.h5'
  
     with h5py.File(path, 'w') as hf:
 
