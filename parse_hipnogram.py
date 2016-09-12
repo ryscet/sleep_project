@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 
 
 stage_to_num = {'W':0, 'R':1, 'N1':2 , 'N2':3, 'N3':4 }
-num_to_stage = {0: 'wake', 1 : 'rem', 2 :'N1', 3 : 'N2', 4: 'N4'}
+num_to_stage = {0: 'wake', 1 : 'rem', 2 :'N1', 3 : 'N2', 4: 'N3'}
 
 def parse_neuroon_stages():
     neuroon_stages = pd.read_csv('neuroon_signals/night_01/neuroon_stages.csv', index_col = 0)
@@ -72,7 +72,7 @@ def parse_psg_stages():
     psg_stages.iloc[new_date::, 0] = '2016-06-21 ' + psg_stages.iloc[new_date ::, 0]
 
     # Convert the string timestamp to datetime object
-    psg_stages['parsed_timestamp'] =  pd.to_datetime(psg_stages['timestamp'],format = '%Y-%m-%d %H:%M:%S.%f')
+    psg_stages['timestamp'] =  pd.to_datetime(psg_stages['timestamp'],format = '%Y-%m-%d %H:%M:%S.%f')
 
     # Create numeric column with stage info
     psg_stages['stage_num'] = psg_stages['stage'].replace(stage_to_num)
@@ -92,21 +92,33 @@ def parse_psg_stages():
     psg_copy['order']= range(1, len(psg_stages) * 2, 2)
     # Here we assign the next row timestamp, and subtract one millisecond from it - pandas does not comply with duplicate indices, 
     # and subtracting one millisecond from an end event wil make it have a different timestamp from the next start event.
-    psg_copy['parsed_timestamp'] = psg_copy['parsed_timestamp'].shift(-1) - pd.Timedelta(milliseconds = 1)
+    psg_copy['timestamp'] = psg_copy['timestamp'].shift(-1) - pd.Timedelta(milliseconds = 1)
 
     # Combine starts and ends and sort them by order column, to have start,end,start,end,start,end, etc... order.
     psg_stages = psg_stages.append(psg_copy).sort('order')
     
     # Deal with the last timestamp which is Nan because of .shift() function
-    psg_stages.iloc[-1, psg_stages.columns.get_loc('parsed_timestamp')] = psg_stages.iloc[-2, psg_stages.columns.get_loc('parsed_timestamp')] - pd.Timedelta(milliseconds = 1)
+    psg_stages.iloc[-1, psg_stages.columns.get_loc('timestamp')] = psg_stages.iloc[-2, psg_stages.columns.get_loc('timestamp')] - pd.Timedelta(milliseconds = 1)
 
     
-    psg_stages.set_index(psg_stages['parsed_timestamp'], inplace = True, drop = True)
+    psg_stages.set_index(psg_stages['timestamp'], inplace = True, drop = True)
 
-    psg_stages.drop(['hour', 'order', 'timestamp', 'stage'], axis = 1, inplace = True)
+    psg_stages.drop(['hour', 'order', 'stage'], axis = 1, inplace = True)
 
     psg_stages.to_csv('parsed_data/' +'psg_hipnogram.csv', index = False)
     return psg_stages
+    
+def prep_for_phases(hipnogram):
+    hipnogram = hipnogram.reset_index(drop = True)
+    
+    grouped = hipnogram.groupby('stage_shift', as_index=False)
+    starts = grouped.get_group('start')
+    ends = grouped.get_group('end')
+    
+    starts.loc[:,'ends'] = np.array(ends['timestamp'])
+    starts.rename(columns = {'timestamp':'starts'}, inplace = True)
+    
+    return starts
 
 
 def plot_hipnograms():
@@ -117,7 +129,7 @@ def plot_hipnograms():
 
     fig, axes = plt.subplots(2, sharex = True, sharey = True)
     axes[0].plot(neur['timestamp'] , neur['stage'], color = 'blue', alpha = 0.7, label = 'NeuroOn')
-    axes[1].plot(psg['parsed_timestamp'], psg['stage_num'], color = 'green', alpha = 0.7, label = 'PSG')
+    axes[1].plot(psg['timestamp'], psg['stage_num'], color = 'green', alpha = 0.7, label = 'PSG')
 
     axes[0].set_ylabel('NeuroOn hipnogram')
     axes[1].set_ylabel('PSG hipnogram')

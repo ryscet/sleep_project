@@ -43,7 +43,7 @@ def parallel_parse():
 
         
 
-def parse_neuroon():
+def parse_neuroon(cut_to_match = False):
 
 
     neuroon = pd.Series.from_csv('neuroon_signals/night_01/neuroon_signal.csv',header = 0, infer_datetime_format=True)
@@ -57,7 +57,8 @@ def parse_neuroon():
     # Neuroon starts later and ends earlier than psg. 
     # To get window of time covered by both recordings, select the first time recorded of psg and last time recorded by neuroon
     
-    neuroon = neuroon.loc[psg_hipno.head(1).index.values[0] : noo_hipno.tail(1).index.values[0]]
+    if cut_to_match:
+        neuroon = neuroon.loc[psg_hipno.head(1).index.values[0] : noo_hipno.tail(1).index.values[0]]
     
     #neuroon = neuroon.loc[psg_hipno.head(1).index.values[0] : psg_hipno.head(2).index.values[1]]
     
@@ -71,7 +72,7 @@ def parse_neuroon():
     
     return neuroon,slices
     
-def parse_psg(channel = 'F3-A2'):
+def parse_psg(channel = 'F3-A2', cut_to_match = False):
     path = 'neuroon_signals/night_01/psg_signal3.h5'
     
     with h5py.File(path,'r') as hf:
@@ -80,9 +81,11 @@ def parse_psg(channel = 'F3-A2'):
         
     psg_channel = pd.Series(data = signal, index = timestamp, name = channel, dtype = np.int32)
         
-        # Cut the common window of time from neuroon and psg signals
-    psg_channel = psg_channel.loc[psg_hipno.head(1).index.values[0] : noo_hipno.tail(1).index.values[0]]
-        
+    if cut_to_match :
+    # Cut the common window of time from neuroon and psg signals
+        psg_channel = psg_channel.loc[psg_hipno.head(1).index.values[0] : noo_hipno.tail(1).index.values[0]]
+    
+                                  
         # get the signal duration time
     sig_duration = np.array(psg_channel.tail(1).index.values[0] - psg_channel.head(1).index.values[0],dtype='timedelta64[ms]').astype(int)
 

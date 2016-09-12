@@ -51,7 +51,7 @@ def edf_to_hdf():
     return signal_dict
 
 def dict_to_hdf(psg):
-    path = 'neuroon_signals/night_01/psg_signal3.h5'
+    path = 'parsed_data/psg_signal3.h5'
  
     with h5py.File(path, 'w') as hf:
 

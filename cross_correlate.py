@@ -37,17 +37,19 @@ def cross_corr_frequency():
     
     
 
-def CrossCorrelate(x,y, absolute_lag, binsize, info):
+def CrossCorrelate(sig_dict, absolute_lag, binsize, info):
     #x = np.sin(np.arange(0, 1440 * pi/180, 0.1) + 45* pi/180 )
     #y = np.sin(np.arange(0, 1440 * pi/180, 0.1))
 
-    
+    x = sig_dict['psg']
+    y = sig_dict['neuroon']
     print(info)
     f, axes = plt.subplots(3)
     f.suptitle(str(info) + '_hz' )
     axes[0].plot(x,'r', label = 'psg', alpha = 0.5)
     axes[0].plot(y, 'b', label = 'neuroon', alpha = 0.5)
-
+    plt.legend()
+    axes[0].legend()
   #  print(len(x))
 
     lags = np.arange(-absolute_lag, absolute_lag+1,  binsize, dtype = 'int')
@@ -66,7 +68,8 @@ def CrossCorrelate(x,y, absolute_lag, binsize, info):
     #    print(len(tmp_x))
      #   print(len(tmp_y))
 
-        coeff, p = stats.pearsonr(tmp_x , tmp_y)
+       # coeff, p = stats.pearsonr(tmp_x , tmp_y)
+        coeff, p = stats.spearmanr(tmp_x , tmp_y)
         all_coeffs.append(coeff)
         all_p.append(p)
 
@@ -78,7 +81,6 @@ def CrossCorrelate(x,y, absolute_lag, binsize, info):
     
     axes[1].set_xlabel('time lag')
     axes[2].set_xlabel('time_lag')
-    plt.legend()
     
     f.savefig('figures/freq_cross_' + str(info) +'.pdf')
     
