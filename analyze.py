@@ -13,10 +13,11 @@ import numpy as np
 import pandas as pd
 import cross_correlate as cs
 
+# Change this to script function and namecross correlation!!!!!!!!!!!----------!!!!!
 
 
 def RunAll():
-    for channel in ['O2-A1', 'O1-A2', 'F4-A1', 'C4-A1', 'C3-A2']:
+    for channel in ['O2-A1', 'O1-A2', 'F4-A1','F3-A2', 'C4-A1', 'C3-A2']:
 #    explore_eeg(channel)
         explore_eeg(channel)
     #print(channel)

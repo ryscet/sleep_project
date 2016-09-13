@@ -35,8 +35,8 @@ def parallel_parse():
     
     #Parse all psg channels using
     num_cores = multiprocessing.cpu_count()
-    Parallel(n_jobs=num_cores)(delayed(RunAll)(name) for name in ['O2-A1', 'O1-A2', 'F4-A1', 'C4-A1', 'C3-A2'])
-    
+    Parallel(n_jobs=num_cores)(delayed(RunAll)(name) for name in ['O2-A1', 'O1-A2', 'F4-A1','F3-A2', 'C4-A1', 'C3-A2'])
+    parse_neuroon()
         
 
 
