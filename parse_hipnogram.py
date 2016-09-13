@@ -8,10 +8,10 @@ Created on Fri Aug 26 12:47:44 2016
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+import datetime as dt
 
-
-stage_to_num = {'W':0, 'R':1, 'N1':2 , 'N2':3, 'N3':4 }
-num_to_stage = {0: 'wake', 1 : 'rem', 2 :'N1', 3 : 'N2', 4: 'N3'}
+stage_to_num = {'W':5, 'R':1, 'N1':2 , 'N2':3, 'N3':4 }
+num_to_stage = {5: 'wake', 1 : 'rem', 2 :'N1', 3 : 'N2', 4: 'N3'}
 
 def parse_neuroon_stages():
     neuroon_stages = pd.read_csv('neuroon_signals/night_01/neuroon_stages.csv', index_col = 0)
@@ -21,6 +21,9 @@ def parse_neuroon_stages():
 
     # Change from negative to positive stages coding
     neuroon_stages.loc[:, 'stage_num'] = np.abs( neuroon_stages['stage'])
+    
+    # Change the code of wake from 0 to 5, we'll need zero value later
+    neuroon_stages.loc[neuroon_stages['stage_num'] == 0, 'stage_num'] = 5
 
     #Mark the row where a new stage startes
     neuroon_stages['stage_start'] = neuroon_stages['stage_num'] - neuroon_stages['stage_num'].shift(1)
@@ -31,9 +34,13 @@ def parse_neuroon_stages():
 
     # Find stages that lasted for one sampling interval, 30 sec
     neuroon_stages.loc[(neuroon_stages.loc[:,'stage_start'] != 0) & (neuroon_stages.loc[:,'stage_end'] != 0), 'stage_shift'] = 'short'
-
+    
+    # Subtract 29.999 seconds from start, because it's onset is after a 30 sec interval where stage is calculated.
+    neuroon_stages.loc[neuroon_stages['stage_shift'] == 'start', 'timestamp'] = neuroon_stages.loc[neuroon_stages['stage_shift'] == 'start', 'timestamp'] - dt.timedelta(milliseconds = (1000 * 30) -1)
     # Leave only the rows where the stage shifted    
     neuroon_stages = neuroon_stages[pd.notnull(neuroon_stages['stage_shift'])]
+                                    
+
     
     # Add the column with string names for stages
     neuroon_stages['stage_name'] = neuroon_stages['stage_num'].replace(num_to_stage)

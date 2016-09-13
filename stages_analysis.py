@@ -17,18 +17,6 @@ from psg_edf_2_hdf import hdf_to_spectrum_dict as load_spectrum
 
 plt.style.use('ggplot')
 
-if __name__ == '__main__':  
-    try:
-        neuroon_hipno
-        print('loaded')
-    except NameError:
-        print('not found, loading')
-        psg_hipno = ph.prep_for_phases(ph.parse_psg_stages())
-        neuroon_hipno = ph.prep_for_phases(ph.parse_neuroon_stages())
-        stage_color_dict = {'N1' : 'royalblue', 'N2' :'forestgreen', 'N3' : 'coral', 'rem' : 'plum', 'wake' : 'y' }
-        electrode_color_dict = {'O2-A1' : 'purple', 'O1-A2' :'mediumorchid', 'F4-A1' : 'royalblue', 'F3-A2' : 'dodgerblue', 'C4-A1' : 'seagreen', 'C3-A2' : 'darkseagreen' }
-        axes_dict = {'N1' : 0, 'N2':1, 'N3' : 2, 'rem' : 3}
-
 
 
 def compare_neuroon_psg():
@@ -164,6 +152,23 @@ def plot_spectra_by_electrode(spectra, frequency, axes, channel):
             axes[axes_dict[stage_name]].set_ylabel(stage_name + ' power density')
             
         plt.legend()
+        
+        
+if __name__ == '__main__':  
+    try:
+        neuroon_hipno
+        print('loaded')
+    except NameError:
+        print('not found, loading')
+        psg_hipno = ph.prep_for_phases(ph.parse_psg_stages())
+        neuroon_hipno = ph.prep_for_phases(ph.parse_neuroon_stages())
+        stage_color_dict = {'N1' : 'royalblue', 'N2' :'forestgreen', 'N3' : 'coral', 'rem' : 'plum', 'wake' : 'y' }
+        electrode_color_dict = {'O2-A1' : 'purple', 'O1-A2' :'mediumorchid', 'F4-A1' : 'royalblue', 'F3-A2' : 'dodgerblue', 'C4-A1' : 'seagreen', 'C3-A2' : 'darkseagreen' }
+        axes_dict = {'N1' : 0, 'N2':1, 'N3' : 2, 'rem' : 3}
+    
+    compare_neuroon_psg()
+    compare_stages()
+    compare_electrodes()
     
 #def 
 
