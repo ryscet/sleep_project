@@ -15,6 +15,7 @@ import h5py
 import numpy as np
 import scipy.signal as sig
 import parse_hipnogram as ph
+from itertools import tee
 
 def edf_to_hdf():
     """Opens the psg edf file and parses it into a hdf5 database - this way a single channel can be loaded."""
@@ -74,7 +75,6 @@ def stages_to_hdf():
     
 def make_stage_slices(sampling_rate, hipno, signal, channel):
 
-
     
     slices = {}
     spectra = {}
@@ -98,6 +98,7 @@ def make_stage_slices(sampling_rate, hipno, signal, channel):
         frequency[name] = np.array(stage_freqs)
         
     return slices, spectra, frequency
+    
     
 
 

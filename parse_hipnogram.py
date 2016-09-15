@@ -50,6 +50,12 @@ def parse_neuroon_stages():
     # Drop the columns used for stage_shift calculation and the timestamp since it's the index now
     neuroon_stages.drop(['stage_start', 'stage_end', 'stage'], axis = 1, inplace = True)
     
+    # Drop 30 second lasting stages - only 9 of these. They make the event number uneven, thus difficult to assign, and are different to compare than stages with start and stop timestamps
+    neuroon_stages = neuroon_stages.loc[neuroon_stages['stage_shift'] != 'short', :]
+    
+    #Add unique event number for each phase occurence
+    neuroon_stages['event_number'] = np.array([[i]*2 for i in range(len(neuroon_stages) /2)]).flatten()
+    
     neuroon_stages.to_csv('parsed_data/' + 'neuroon_hipnogram.csv', index = False)
 
     return neuroon_stages
@@ -111,6 +117,10 @@ def parse_psg_stages():
     psg_stages.set_index(psg_stages['timestamp'], inplace = True, drop = True)
 
     psg_stages.drop(['hour', 'order', 'stage'], axis = 1, inplace = True)
+    
+    #Add unique event number for each phase occurence
+    psg_stages['event_number'] = np.array([[i]*2 for i in range(len(psg_stages) /2)]).flatten()
+
 
     psg_stages.to_csv('parsed_data/' +'psg_hipnogram.csv', index = False)
     return psg_stages
