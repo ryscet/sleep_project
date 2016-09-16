@@ -20,6 +20,7 @@ stage_color_dict = {'N1' : 'royalblue', 'N2' :'forestgreen', 'N3' : 'coral', 're
     
 def intersect_shift():
     intersection = OrderedDict()
+    intersection2 = OrderedDict()
     Psg_Hipno = ph.parse_psg_stages()
     Noo_Hipno = ph.parse_neuroon_stages()
     
@@ -27,24 +28,22 @@ def intersect_shift():
     
     fig, axes = plt.subplots()
     fig.suptitle('Neuroon-Psg overlap with time offset')
-    for shift in np.arange(-600, 600, 10):
+    for shift in np.arange(-500, 100, 10):
         print(shift)
-        intersection[shift] = get_hipnogram_intersection(Noo_Hipno.copy(), Psg_Hipno.copy(), shift)
+        #intersection[shift], intersection2[shift] = get_hipnogram_intersection(Noo_Hipno.copy(), Psg_Hipno.copy(), shift)
+        intersection[shift] = get_hipnogram_intersection(Noo_Hipno.copy(), Psg_Hipno.copy(), shift) / 60.0 # To convert seconds to minutes
         
     axes.plot(list(intersection.keys()), list(intersection.values() ))
     axes.set_ylabel('minutes in the same sleep stage')
     axes.set_xlabel('offset in seconds')
     raise_window()
-    return intersection
+    return intersection, intersection2
         
 
 def get_hipnogram_intersection(noo_hipno, psg_hipno, time_shift):
 
     noo_hipno.index = noo_hipno.index + timedelta(seconds = time_shift)
-    #noo_hipno = noo_hipno.loc[noo_hipno['stage_shift'] != 'short', :]
-    
-  #  psg_hipno['event_number'] = np.array([[i]*2 for i in range(len(psg_hipno) /2)]).flatten()
-   # noo_hipno['event_number'] = np.array([[i]*2 for i in range(len(noo_hipno) /2 )]).flatten()
+
     
     combined = psg_hipno.join(noo_hipno, how = 'outer', lsuffix = '_psg', rsuffix = '_neuro')
     
@@ -56,7 +55,7 @@ def get_hipnogram_intersection(noo_hipno, psg_hipno, time_shift):
     combined['overlap'] = combined['stage_num_psg'] - combined['stage_num_neuro']
     
     same_stage = combined.loc[combined['overlap'] == 0]
-    same_stage['event_union'] = same_stage['event_number_psg'] + same_stage['event_number_neuro']
+    same_stage.loc[:, 'event_union'] = same_stage['event_number_psg'] + same_stage['event_number_neuro']
 
 #    # Plot intersection example
 #    fig, axes = plt.subplots(2, sharex = True)
@@ -71,39 +70,41 @@ def get_hipnogram_intersection(noo_hipno, psg_hipno, time_shift):
     # The precision is rounded down to the last full minute
     
     
-    #common_window = np.array([noo_hipno.tail(1).index.get_values()[0] - psg_hipno.head(1).index.get_values()[0]],dtype='timedelta64[m]').astype(int)[0]
+#    common_window = np.array([noo_hipno.tail(1).index.get_values()[0] - psg_hipno.head(1).index.get_values()[0]],dtype='timedelta64[m]').astype(int)[0]
 
     all_durations = OrderedDict()
+
     for stage_name, intersection in same_stage.groupby('event_union'):
             # Subtract the first row timestamp from the last to get the duration. Store as the duration in milliseconds.
-            duration = np.array([intersection.tail(1).index.get_values()[0] - intersection.head(1).index.get_values()[0]], dtype='timedelta64[ms]').astype(int)[0]
-    
+            duration = (intersection.index.to_series().iloc[-1]- intersection.index.to_series().iloc[0]).total_seconds()
+                                 
             stage_id = intersection.iloc[0, intersection.columns.get_loc('stage_name_neuro')] 
             # Keep appending results to a list stored in a dict. Check if the list exists, if not create it.
             if stage_id not in all_durations.keys():
-                # Divide to get minutes
-                all_durations[stage_id] = [duration / 1000.0 / 60.0]
+                all_durations[stage_id] = [duration]
                 
-            all_durations[stage_id].append(duration / 1000.0 / 60.0)
+            else:   
+                all_durations[stage_id].append(duration)
+            
+
     
     means = OrderedDict()
     stds = OrderedDict()
     sums = OrderedDict()
     grand_sum = 0
     for key, value in all_durations.items():
-        if key != 'wake':
-            means[key] = np.array(value).mean()
-            stds[key] = np.array(value).std()
-            sums[key] = np.array(value).sum()
-            grand_sum = grand_sum + np.array(value).sum()   
-   # print(grand_sum)
+        #if key != 'wake':
+        means[key] = np.array(value).mean()
+        stds[key] = np.array(value).std()
+        sums[key] = np.array(value).sum()
+        grand_sum += np.array(value).sum()   
     
-    #plot_hipnogram_intersection(means, stds, sums, common_window)
-    return grand_sum, sums
-            
-  #  plot_hipnogram_intersection(means, stds, sums, common_window)
+    # Divide total seconds by 60 to get minutes 
+    #return grand_sum
+    return sums
+ 
+    #  plot_hipnogram_intersection(means, stds, sums, common_window)
    
-   # return sums
 
             
 def plot_hipnogram_intersection(means, stds, sums, common_window):
