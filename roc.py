@@ -19,10 +19,28 @@ import matplotlib as mpl
 # Make sure common times and psg timeas have the same res (they dont)
 stage_color_dict = {'N1' : 'royalblue', 'N2' :'forestgreen', 'N3' : 'coral', 'rem' : 'plum', 'wake' : 'y' }
 
-def get_roc():
-    psg_hipno = ph.parse_psg_stages()
-    noo_hipno = ph.parse_neuroon_stages()
+def run_permute():
+    fig, axes = plt.subplots()
     
+    orig_confusion_matrixes, orig_cl_params = get_roc(permute = False)
+
+    for i in range(30):
+        print(i)
+        all_confusion_matrixes, all_cl_params = get_roc(permute = True)
+        tp, fp = all_confusion_matrixes['N2']['true_positive'], all_confusion_matrixes['N2']['false_positive']
+        axes.plot(fp, tp, color = 'r', marker = 'o', alpha = 0.5)
+    
+    axes.plot(orig_confusion_matrixes['N2']['false_positive'], orig_confusion_matrixes['N2']['true_positive'], color = 'b', marker = 'o', alpha = 1)
+    
+    axes.plot([0,1], [0,1], color = 'black', linestyle = '--', alpha = 0.5)
+    axes.set_xlabel('false_positive')
+    axes.set_ylabel('true_positive')
+    
+def get_roc(permute = False):
+    psg_hipno = ph.parse_psg_stages()
+    noo_hipno = ph.parse_neuroon_stages(permute)
+    
+    # Get the start and end of the time window covered by both hipnograms
     start = noo_hipno.index.searchsorted(psg_hipno.index.get_values()[0])
     end = psg_hipno.index.searchsorted(noo_hipno.index.get_values()[-1])
     
@@ -36,8 +54,8 @@ def get_roc():
     
     neuroon_correct = ih.get_hipnogram_intersection(psg_hipno.copy(), noo_hipno.copy(), 0)
 
-    
-    roc_fig, roc_axes = plt.subplots()
+    all_confusion_matrixes = {}
+    all_cl_params = {}
     for stage in list(neuroon_total.keys()):
         
          #The time neuroon said it was not this stage
@@ -54,36 +72,54 @@ def get_roc():
         false_positive = (neuroon_total[stage] - neuroon_correct[stage]) / psg_negative 
         false_negative =  (psg_total[stage] - neuroon_correct[stage]) / neuroon_negative 
 #        
-        confusion_matrix =[['true positive: %.2f'%true_positive, 'false positive: %.2f'%false_positive],['false negative: %.2f'%false_negative, 'true negative: %.2f'%true_negative]]
+        confusion_matrix ={'true_positive' : true_positive, 'false_positive' : false_positive,'false_negative':false_negative, 'true_negative' : true_negative}
 
-        precision = true_positive / (true_positive + false_positive)
-        recall = true_positive / (true_positive + false_negative)
-        accuracy = (true_positive + true_negative) / (true_positive + true_negative + false_positive + false_negative)
-
-        fig, ax= plt.subplots()
-        fig.suptitle('classification performance for %s'%stage, fontweight = 'bold')
-        #plt.plot([10,10,14,14,10],[2,4,4,2,2],'r')
-        col_labels=['psg positive','psg negative']
-        row_labels=['neuroon\n positive','neuroon\n negative']
-        table_vals=[['TP: %.2f'%true_positive,'FP: %.2f'%false_positive],['FN: %.2f'%false_negative, 'TN: %.2f'%true_negative]]
-        # the rectangle is where I want to place the table
-        the_table = plt.table(cellText=table_vals,
-                          colWidths = [0.2]*2,
-                          rowLabels=row_labels,
-                          colLabels=col_labels,
-                          loc='center')
-        plt.text(0.75,0.60,'accuracy: %.2f'%accuracy ,size=14)
-        plt.text(0.75, 0.50,'precision: %.2f'%precision ,size=14)
-        plt.text(0.75,0.40,'recall: %.2f'%recall ,size=14)
-        the_table.scale(1, 2.5)
-        ax.xaxis.set_visible(False) 
-        ax.yaxis.set_visible(False)
-        fig.savefig('figures/roc/cm_%s.pdf'%stage)
-
-        #plt.plot(y)
-        plt.show()
+        all_confusion_matrixes[stage] = confusion_matrix
         
-        roc_axes.plot(false_positive, true_positive, marker= 'o', color = stage_color_dict[stage], label = stage)
+        cl_params = {}
+        cl_params['precision'] = true_positive / (true_positive + false_positive)
+        cl_params['recall'] = true_positive / (true_positive + false_negative)
+        cl_params['accuracy'] = (true_positive + true_negative) / (true_positive + true_negative + false_positive + false_negative)
+        
+        all_cl_params[stage] = cl_params
+        
+    
+   # plot_roc(all_confusion_matrixes, all_cl_params)
+    
+    return all_confusion_matrixes, all_cl_params
+
+        
+def plot_roc(all_confusion_matrix, all_cl_params):
+    
+        roc_fig, roc_axes = plt.subplots()
+        
+        for stage in list(all_confusion_matrix.keys()):
+           
+            confusion_matrix= all_confusion_matrix[stage]
+            cl_params = all_cl_params[stage]
+            
+            fig, ax= plt.subplots() 
+            fig.suptitle('classification performance for %s'%stage, fontweight = 'bold')
+            #plt.plot([10,10,14,14,10],[2,4,4,2,2],'r')
+            col_labels=['psg positive','psg negative']
+            row_labels=['neuroon\n positive','neuroon\n negative']
+            table_vals=[['TP: %.2f'%confusion_matrix['true_positive'],'FP: %.2f'%confusion_matrix['false_positive']],['FN: %.2f'%confusion_matrix['false_negative'], 'TN: %.2f'%confusion_matrix['true_negative']]]
+            # the rectangle is where I want to place the table
+            the_table = ax.table(cellText=table_vals,
+                              colWidths = [0.2]*2,
+                              rowLabels=row_labels,
+                              colLabels=col_labels,
+                              loc='center')
+            ax.text(0.75,0.60,'accuracy: %.2f'%cl_params['accuracy'] ,size=14)
+            ax.text(0.75, 0.50,'precision: %.2f'%cl_params['precision'],size=14)
+            ax.text(0.75,0.40,'recall: %.2f'%cl_params['recall'],size=14)
+            the_table.scale(1, 2.5)
+            ax.xaxis.set_visible(False) 
+            ax.yaxis.set_visible(False)
+            fig.savefig('figures/roc/cm_%s.pdf'%stage)
+
+
+            roc_axes.plot(confusion_matrix['false_positive'], confusion_matrix['true_positive'], marker= 'o', color = stage_color_dict[stage], label = stage)
         
         roc_axes.plot([0,1], [0,1], color = 'black', linestyle = '--', alpha = 0.5)
         roc_axes.set_xlabel('false_positive')
