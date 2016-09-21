@@ -5,6 +5,9 @@ Created on Mon Sep  5 16:47:32 2016
 
 @author: ryszardcetnarski
 """
+from parse_signal import load_psg, load_neuroon
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
@@ -12,14 +15,19 @@ import explore_eeg as ee
 from scipy import signal
 from itertools import tee
 import pandas as pd
-from psg_edf_2_hdf import hdf_to_series as load_channel
 import parse_hipnogram as ph
 import seaborn as sns
 
 
-
 from numpy.fft import fft, ifft, fft2, ifft2, fftshift
 
+#try: 
+#    psg_signal
+#    print('loaded')
+#except:
+#    print('loading')
+#    psg_signal =  load_psg('F3-A2')
+#    neuroon_signal =  load_neuroon()
 
 
 def cross_correlation_using_fft(x, y):
@@ -40,34 +48,38 @@ def compute_shift(x, y):
 
 
 def cross_correlate():
-    psg_description = '%i_minute_psg_%s' %(30, 'F3-A2')
-    neuroon_description = '%i_minute_neuroon' %30
-    
-    psg_slices = np.load('parsed_data/numpy_slices/' + psg_description + '_slices.npy')
-    neuroon_slices = np.load('parsed_data/numpy_slices/' + neuroon_description + '_slices.npy')
+    psg_hipno = ph.parse_psg_stages()
+    neuroon_hipno = ph.parse_neuroon_stages()
     
     
+    psg_signal =  load_psg('F3-A2')
+    neuroon_signal =  load_neuroon()
+    
+    psg_10 = psg_signal.resample('10ms').mean()
+    neuroon_10 = neuroon_signal.resample('10ms').mean()
+    # Create ten minutes intervals 
+    dates_range = pd.date_range(psg_hipno.head(2).index.get_values()[0], neuroon_hipno.tail(1).index.get_values()[0], freq="10min")
+    # Convert them to string with only hours, minutes and seconds
+    dates_range = [d.strftime('%H:%M:%S') for d in dates_range]
+    
+                   
     all_coefs = []
-    #all_shift = []
     i = 0
-    for psg, neuroon in zip(psg_slices, neuroon_slices):
-       # fig, axes  = plt.subplots()
-        
+    
+    for start, end in pairwise(dates_range):
+        print(start)
+        neuroon_cut = neuroon_10.between_time(start, end).rolling(window = 30).mean().dropna()
+        psg_cut = psg_10.between_time(start, end).rolling(window = 30).mean().dropna()
 
-        #axes.plot(moving_average(neuroon, 200), moving_average(psg, 200), 'ro', alpha = 0.5)
-        #axes.plot(moving_average(neuroon, 200), 'b')
         i = i+1
         print(i)
-#        if(i > 5): break
-   #     sig_dict = {'psg':psg, 'neuroon':neuroon}    
-            # Multiplier is the number of second (since freq is 10 ms after resampling)
-        shift, coeffs = compute_shift(psg, neuroon)
-        all_coefs.append(coeffs)#[zero_index - 20000: zero_index + 1000])
-        #all_shift.append(shift)
-        print(shift)
+
+        shift, coeffs = compute_shift(neuroon_cut, psg_cut)
+
+        all_coefs.append((coeffs - coeffs.mean()) / coeffs.std())#normalize the coefficients because they will be shown on the same heatmap and need a common color scale
+
         
     all_coefs = np.array(all_coefs)
-    #all_shift = np.array(all_shift)  
     return all_coefs
 
 def plot_corr(all_coeffs):

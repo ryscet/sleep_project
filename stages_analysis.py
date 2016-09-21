@@ -17,7 +17,7 @@ from psg_edf_2_hdf import hdf_to_spectrum_dict as load_spectrum
 
 plt.style.use('ggplot')
 
-
+ 
 
 def compare_neuroon_psg():
 

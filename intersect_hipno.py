@@ -23,9 +23,6 @@ def intersect_shift():
     psg_hipno = ph.parse_psg_stages()
     noo_hipno = ph.parse_neuroon_stages()
     
-
-    
-
     intersection = OrderedDict([('wake', []), ('rem',[]), ('N1',[]), ('N2',[]), ('N3', []), ('stages_sum', [])])
 
     shift_range = np.arange(-500, 100, 10)
@@ -35,7 +32,7 @@ def intersect_shift():
             intersection[stage].append(intersect_dur)
     
     plot_intersection(intersection, shift_range)
-
+    
 
 
 def plot_intersection(intersection, shift_range):
@@ -93,7 +90,8 @@ def plot_intersection(intersection, shift_range):
 
 def get_hipnogram_intersection(noo_hipno, psg_hipno, time_shift):
 
-    noo_hipno.index = noo_hipno.index + timedelta(seconds = time_shift)
+    # Weird behavior with python 3, says TypeError: unsupported type for timedelta seconds component: numpy.int64. Casting to int solves it
+    noo_hipno.index = noo_hipno.index + timedelta(seconds = int(time_shift))
 
     
     combined = psg_hipno.join(noo_hipno, how = 'outer', lsuffix = '_psg', rsuffix = '_neuro')

@@ -3,7 +3,7 @@
 """
 First script to call for the analysis pipeline.
 Converts the psg recordigng saved as edf to hdf5 database which is faster to load than edf or csv.
-Call psg_to_hdf() and sig_to_hdf() to create hdf databases.
+Call psg_to_hdf() and neuroon_to_hdf() to create hdf databases.
 use load_psg(channel_name) and load_neuroon() to retrieve data. 
 
 
