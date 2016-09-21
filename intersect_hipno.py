@@ -15,29 +15,80 @@ import seaborn as sns
 from collections import OrderedDict 
 from datetime import timedelta
 
-stage_color_dict = {'N1' : 'royalblue', 'N2' :'forestgreen', 'N3' : 'coral', 'rem' : 'plum', 'wake' : 'y' }
+
+stage_color_dict = {'N1' : 'royalblue', 'N2' :'forestgreen', 'N3' : 'coral', 'rem' : 'plum', 'wake' : 'lightgrey', 'stages_sum': 'dodgerblue'}
 
     
 def intersect_shift():
-    intersection = OrderedDict()
-    intersection2 = OrderedDict()
-    Psg_Hipno = ph.parse_psg_stages()
-    Noo_Hipno = ph.parse_neuroon_stages()
+    psg_hipno = ph.parse_psg_stages()
+    noo_hipno = ph.parse_neuroon_stages()
     
 
     
-    fig, axes = plt.subplots()
+
+    intersection = OrderedDict([('wake', []), ('rem',[]), ('N1',[]), ('N2',[]), ('N3', []), ('stages_sum', [])])
+
+    shift_range = np.arange(-500, 100, 10)
+    for shift in shift_range:
+        sums, _, _ = get_hipnogram_intersection(noo_hipno.copy(), psg_hipno.copy(), shift)
+        for stage, intersect_dur in sums.items():
+            intersection[stage].append(intersect_dur)
+    
+    plot_intersection(intersection, shift_range)
+
+
+
+def plot_intersection(intersection, shift_range):
+    
+    fig, axes = plt.subplots(2)
     fig.suptitle('Neuroon-Psg overlap with time offset')
-    for shift in np.arange(-500, 100, 10):
-        print(shift)
-        #intersection[shift], intersection2[shift] = get_hipnogram_intersection(Noo_Hipno.copy(), Psg_Hipno.copy(), shift)
-        intersection[shift] = get_hipnogram_intersection(Noo_Hipno.copy(), Psg_Hipno.copy(), shift) / 60.0 # To convert seconds to minutes
+    zscore_ax = axes[0].twinx()
+    
+    for stage in ['rem', 'N2', 'N3', 'wake']:
+        intersect_sum = np.array(intersection[stage])
+        z_scored = (intersect_sum - intersect_sum.mean()) / intersect_sum.std()
+        zscore_ax.plot(shift_range, z_scored, color = stage_color_dict[stage], label = stage, alpha = 0.5, linestyle = '--')
         
-    axes.plot(list(intersection.keys()), list(intersection.values() ))
-    axes.set_ylabel('minutes in the same sleep stage')
-    axes.set_xlabel('offset in seconds')
+
+    max_overlap = shift_range[np.argmax(intersection['stages_sum'])]
+        
+    axes[0].plot(shift_range, intersection['stages_sum'], label = 'stages sum', color = 'dodgerblue')
+    axes[0].axvline(max_overlap, color='k', linestyle='--')
+
+    axes[0].set_ylabel('minutes in the same sleep stage')
+    axes[0].set_xlabel('offset in seconds')
+    
+    axes[0].legend(loc = 'center right')
+    zscore_ax.grid(b=False)
+    zscore_ax.legend()
+        
+    sums0, means0, stds0  = get_hipnogram_intersection(noo_hipno.copy(), psg_hipno.copy(), 0)
+#
+    width = 0.35 
+    ind = np.arange(5)
+    colors_inorder = ['dodgerblue', 'lightgrey', 'forestgreen', 'coral',  'plum']
+    #Plot the non shifted overlaps 
+    axes[1].bar(left = ind, height = list(sums0.values()),width = width, alpha = 0.8, 
+                tick_label =list(sums0.keys()), edgecolor = 'black', color= colors_inorder)
+
+    sumsMax, meansMax, stdsMax  = get_hipnogram_intersection(noo_hipno.copy(), psg_hipno.copy(),  max_overlap)
+    # Plot the shifted overlaps
+    axes[1].bar(left = ind +width, height = list(sumsMax.values()),width = width, alpha = 0.8,
+                 tick_label =list(sumsMax.keys()), edgecolor = 'black', color = colors_inorder)
+    
+    axes[1].set_xticks(ind + width)
+    
+#    
+#    (_, caps, _) = axes[1].errorbar([1,2,3], list(means.values()),  yerr= list(stds.values()), fmt='none', ecolor = 'black', alpha = 0.8, elinewidth = 0.8, linestyle = '-.')
+    
+                
+
+
     raise_window()
-    return intersection, intersection2
+
+    return intersection
+    
+
         
 
 def get_hipnogram_intersection(noo_hipno, psg_hipno, time_shift):
@@ -57,19 +108,7 @@ def get_hipnogram_intersection(noo_hipno, psg_hipno, time_shift):
     same_stage = combined.loc[combined['overlap'] == 0]
     same_stage.loc[:, 'event_union'] = same_stage['event_number_psg'] + same_stage['event_number_neuro']
 
-#    # Plot intersection example
-#    fig, axes = plt.subplots(2, sharex = True)
-#    axes[0].plot(combined.index, combined['stage_num_psg'], 'r', alpha = 0.5, label = 'psg')
-#    axes[0].plot(combined.index, combined['stage_num_neuro'], 'b', alpha = 0.5, label = 'neuroon') 
-#    axes[1].plot(combined.index, combined['stage_num_psg'] - combined['stage_num_neuro'], 'g', alpha = 0.5, label = 'stage intersection')
-#    axes[0].set_ylabel('room id')
-#    axes[1].set_ylabel('room a - room b')
-#    plt.legend()
-#    raise_window()
-    # Get the time where overlap was possible, i.e. exclude time when only one device was recording
-    # The precision is rounded down to the last full minute
-    
-    
+
 #    common_window = np.array([noo_hipno.tail(1).index.get_values()[0] - psg_hipno.head(1).index.get_values()[0]],dtype='timedelta64[m]').astype(int)[0]
 
     all_durations = OrderedDict()
@@ -91,23 +130,27 @@ def get_hipnogram_intersection(noo_hipno, psg_hipno, time_shift):
     means = OrderedDict()
     stds = OrderedDict()
     sums = OrderedDict()
-    grand_sum = 0
+    stages_sum = 0
+    #Adding it here so its first in ordered dict and leftmost on the plot
+    sums['stages_sum'] = 0
     for key, value in all_durations.items():
         #if key != 'wake':
         means[key] = np.array(value).mean()
         stds[key] = np.array(value).std()
         sums[key] = np.array(value).sum()
-        grand_sum += np.array(value).sum()   
+        
+        stages_sum += np.array(value).sum()   
     
+    sums['stages_sum'] = stages_sum
     # Divide total seconds by 60 to get minutes 
-    #return grand_sum
-    return sums
+    #return stages_sum
+    return sums, means, stds
  
     #  plot_hipnogram_intersection(means, stds, sums, common_window)
    
 
             
-def plot_hipnogram_intersection(means, stds, sums, common_window):
+#def plot_hipnogram_intersection(means, stds, sums, common_window):
         
     #results = preapre_results(all_durations)
 

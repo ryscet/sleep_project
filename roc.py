@@ -9,8 +9,7 @@ import intersect_hipno as ih
 from collections import OrderedDict 
 import numpy as np
 import matplotlib.pyplot as plt
-from tabulate import tabulate
-import matplotlib as mpl
+import pandas as pd
    #print(tabulate([[F, p, between_group_sumsq, df_between,  within_group_sumsq, df_within]],
             #         ['F-value','p-value','effect sss','effect df','error sss', 'error df'], tablefmt="grid"))
 
@@ -82,8 +81,8 @@ def get_roc(permute = False):
         
         all_cl_params[stage] = cl_params
         
-    
-   # plot_roc(all_confusion_matrixes, all_cl_params)
+    if(permute == False):
+        plot_roc(all_confusion_matrixes, all_cl_params)
     
     return all_confusion_matrixes, all_cl_params
 

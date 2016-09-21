@@ -71,8 +71,9 @@ def shift_test(a, b, hour = 'first'):
     for ax in axes:
         ax.tick_params(axis='both', which='major', labelsize=8)
         ax.tick_params(axis='both', which='minor', labelsize=8)
+        ax.spines['top'].set_visible(False)
         
-    fig.suptitle('neuroon signal delayed')
+   # fig.suptitle('neuroon signal delayed')
     axes[0].plot(a, c = 'r', alpha = 0.5, label = 'neuroon')
     axes[0].plot(b, c = 'b', alpha = 0.5, label = 'psg')
     axes[0].legend()
@@ -93,7 +94,7 @@ def shift_test(a, b, hour = 'first'):
     
     
 
-    axes[3].plot(np.arange(0, len(corr3),1) *10, corr3)
+    axes[3].plot(corr3)
     
     axes[3].set_title('offset found at %i seconds'%int(-lag3 / 100), fontsize = 10)
 
@@ -107,7 +108,7 @@ def shift_test(a, b, hour = 'first'):
     axes[4].set_xlabel('offset in sample number')
     
 
-    axes[4].plot(np.arange(0, len(corr4),1) *10 ,corr4)
+    axes[4].plot(corr4)
     axes[4].set_title('offset found at %i seconds'%int(-lag4 / 100), fontsize = 10)
 
     print(lag1)
