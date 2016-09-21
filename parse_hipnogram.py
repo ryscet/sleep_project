@@ -13,18 +13,34 @@ import datetime as dt
 stage_to_num = {'W':5, 'R':1, 'N1':2 , 'N2':3, 'N3':4 }
 num_to_stage = {5: 'wake', 1 : 'rem', 2 :'N1', 3 : 'N2', 4: 'N3'}
 
+<<<<<<< HEAD
 def parse_neuroon_stages(permute = False):
     """Neuroon marks a stage every 30 seconds. Change this to time intervals between each new stage start and end (i.e. downsample)."""
     neuroon_stages = pd.read_csv('neuroon_signals/night_01/neuroon_stages.csv', index_col = 0)
     
     if(permute):
         neuroon_stages.loc[:, 'stage'] = np.random.permutation(neuroon_stages['stage'].as_matrix())
+=======
+>>>>>>> 5570564343f251cc6a7f2e1fd953653a000bbeb7
 
+neuroon_raw = pd.read_csv('neuroon_signals/night_01/neuroon_stages.csv', index_col = 0)
+
+def parse_neuroon_stages(permute = False):
+    neuroon_stages = neuroon_raw.copy()
+    
+    # permute the stage number before binning into stages to simulate random assignment into stages - it proably is not random originally because we can see different average durations for different phases, i.e. rem is longer and continous or something  of a sort
+    if(permute):
+        neuroon_stages.loc[:, 'stage'] = np.random.permutation(neuroon_stages['stage'].as_matrix())
     # add two hours because time was saved in a different timezone
     neuroon_stages['timestamp'] = pd.to_datetime(neuroon_stages['timestamp'].astype(int), unit='ms', utc=True) + pd.Timedelta(hours = 2)
 
+<<<<<<< HEAD
     # Change from negative to positive stages coding to be consistent with psg
     neuroon_stages.loc[:, 'stage_num'] = np.abs( neuroon_stages['stage'])
+=======
+    # Change from negative to positive stages coding
+    neuroon_stages.loc[:, 'stage_num'] = np.abs(neuroon_stages['stage'])
+>>>>>>> 5570564343f251cc6a7f2e1fd953653a000bbeb7
     
     # Change the code of wake from 0 to 5, we'll need zero value later
     neuroon_stages.loc[neuroon_stages['stage_num'] == 0, 'stage_num'] = 5
@@ -40,12 +56,21 @@ def parse_neuroon_stages(permute = False):
 
     # Find stages that lasted for only one sampling interval, 30 sec
     neuroon_stages.loc[(neuroon_stages.loc[:,'stage_start'] != 0) & (neuroon_stages.loc[:,'stage_end'] != 0), 'stage_shift'] = 'short'
+<<<<<<< HEAD
     
     # Subtract 29.999 seconds from start, because its' onset is after a 30 sec interval where stage is calculated.
     # This subtraction is favouring neuroon performance, which would not include this 30 sec interval in real time analysis.
     neuroon_stages.loc[neuroon_stages['stage_shift'] == 'start', 'timestamp'] = neuroon_stages.loc[neuroon_stages['stage_shift'] == 'start', 'timestamp'] - dt.timedelta(milliseconds = (1000 * 30) -1)
     # Leave only the rows where the stage shifted    
     neuroon_stages = neuroon_stages[pd.notnull(neuroon_stages['stage_shift'])]
+=======
+#    
+    # Subtract 29.999 seconds from start, because it's onset is after a 30 sec interval where stage is calculated.
+    neuroon_stages.loc[neuroon_stages['stage_shift'] == 'start', 'timestamp'] = neuroon_stages.loc[neuroon_stages['stage_shift'] == 'start', 'timestamp'] - dt.timedelta(milliseconds = (1000 * 30) -1)
+    # Leave only the rows where the stage shifted    
+    neuroon_stages = neuroon_stages[pd.notnull(neuroon_stages['stage_shift'])]
+                                                                        
+>>>>>>> 5570564343f251cc6a7f2e1fd953653a000bbeb7
     
     # Convert the short stages that had only one row into two rows format with start and end time (assuming start was actually 30 sec before)
     extra_starts = neuroon_stages.loc[neuroon_stages['stage_shift'] == 'short', :]
@@ -60,6 +85,7 @@ def parse_neuroon_stages(permute = False):
                                     
     # Add the column with string names for stages
     neuroon_stages['stage_name'] = neuroon_stages['stage_num'].replace(num_to_stage)
+<<<<<<< HEAD
     
     # Set index to be the time for either stages starts and ends.
     neuroon_stages.set_index(neuroon_stages['timestamp'], inplace = True, drop = True)
@@ -70,6 +96,29 @@ def parse_neuroon_stages(permute = False):
     
     #Add unique event number for each phase occurence
     neuroon_stages['event_number'] = np.array([[i]*2 for i in range(int(len(neuroon_stages) /2))]).flatten()
+=======
+
+    # Convert the short stages that had only one row, two two rows format with start and end time (assuming start was actually 30 sec before)
+    extra_starts = neuroon_stages.loc[neuroon_stages['stage_shift'] == 'short', :]
+    extra_starts.loc[:,'timestamp'] = extra_starts.loc[:,'timestamp'] - dt.timedelta(milliseconds = (1000 * 30) -1)
+    extra_starts.loc[:,'stage_shift'] = 'start'
+    # Add the extra start rows for short events to the main data frame
+    neuroon_stages = neuroon_stages.append(extra_starts, ignore_index = True)
+    # Sort by timestamp to have correct event order
+    neuroon_stages = neuroon_stages.sort(columns = 'timestamp')
+    # Rename the shorts to ends
+    neuroon_stages.loc[neuroon_stages['stage_shift'] == 'short', 'stage_shift'] = 'end' 
+
+    
+    # Drop the columns used for stage_shift calculation and the timestamp since it's the index now
+    neuroon_stages.drop(['stage_start', 'stage_end', 'stage'], axis = 1, inplace = True)
+    
+    neuroon_stages.set_index(neuroon_stages['timestamp'], inplace = True)
+
+    #Add unique event number for each phase occurence
+    neuroon_stages['event_number'] = np.array([[i]*2 for i in range(int(len(neuroon_stages) /2))]).flatten()
+    
+>>>>>>> 5570564343f251cc6a7f2e1fd953653a000bbeb7
     if permute == False:
         neuroon_stages.to_csv('parsed_data/' + 'neuroon_hipnogram.csv', index = False)
 
@@ -135,7 +184,7 @@ def parse_psg_stages():
     psg_stages.drop(['hour', 'order', 'stage'], axis = 1, inplace = True)
     
     #Add unique event number for each phase occurence
-    psg_stages['event_number'] = np.array([[i]*2 for i in range(len(psg_stages) /2)]).flatten()
+    psg_stages['event_number'] = np.array([[i]*2 for i in range(int(len(psg_stages) / 2))]).flatten()
 
     psg_stages.to_csv('parsed_data/' +'psg_hipnogram.csv', index = False)
     return psg_stages
