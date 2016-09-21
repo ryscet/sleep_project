@@ -13,13 +13,17 @@ import datetime as dt
 stage_to_num = {'W':5, 'R':1, 'N1':2 , 'N2':3, 'N3':4 }
 num_to_stage = {5: 'wake', 1 : 'rem', 2 :'N1', 3 : 'N2', 4: 'N3'}
 
-def parse_neuroon_stages():
+def parse_neuroon_stages(permute = False):
+    """Neuroon marks a stage every 30 seconds. Change this to time intervals between each new stage start and end (i.e. downsample)."""
     neuroon_stages = pd.read_csv('neuroon_signals/night_01/neuroon_stages.csv', index_col = 0)
+    
+    if(permute):
+        neuroon_stages.loc[:, 'stage'] = np.random.permutation(neuroon_stages['stage'].as_matrix())
 
     # add two hours because time was saved in a different timezone
     neuroon_stages['timestamp'] = pd.to_datetime(neuroon_stages['timestamp'].astype(int), unit='ms', utc=True) + pd.Timedelta(hours = 2)
 
-    # Change from negative to positive stages coding
+    # Change from negative to positive stages coding to be consistent with psg
     neuroon_stages.loc[:, 'stage_num'] = np.abs( neuroon_stages['stage'])
     
     # Change the code of wake from 0 to 5, we'll need zero value later
@@ -27,36 +31,47 @@ def parse_neuroon_stages():
 
     #Mark the row where a new stage startes
     neuroon_stages['stage_start'] = neuroon_stages['stage_num'] - neuroon_stages['stage_num'].shift(1)
+    # And mark where the stage ends
     neuroon_stages['stage_end'] = neuroon_stages['stage_num'] - neuroon_stages['stage_num'].shift(-1)
-
+    
+    # Add new columns which will annotate stage start and end
     neuroon_stages.loc[neuroon_stages['stage_start'] != 0, 'stage_shift'] = 'start'
     neuroon_stages.loc[neuroon_stages['stage_end'] != 0, 'stage_shift'] = 'end'
 
-    # Find stages that lasted for one sampling interval, 30 sec
+    # Find stages that lasted for only one sampling interval, 30 sec
     neuroon_stages.loc[(neuroon_stages.loc[:,'stage_start'] != 0) & (neuroon_stages.loc[:,'stage_end'] != 0), 'stage_shift'] = 'short'
     
-    # Subtract 29.999 seconds from start, because it's onset is after a 30 sec interval where stage is calculated.
+    # Subtract 29.999 seconds from start, because its' onset is after a 30 sec interval where stage is calculated.
+    # This subtraction is favouring neuroon performance, which would not include this 30 sec interval in real time analysis.
     neuroon_stages.loc[neuroon_stages['stage_shift'] == 'start', 'timestamp'] = neuroon_stages.loc[neuroon_stages['stage_shift'] == 'start', 'timestamp'] - dt.timedelta(milliseconds = (1000 * 30) -1)
     # Leave only the rows where the stage shifted    
     neuroon_stages = neuroon_stages[pd.notnull(neuroon_stages['stage_shift'])]
-                                    
-
     
+    # Convert the short stages that had only one row into two rows format with start and end time (assuming start was actually 30 sec before)
+    extra_starts = neuroon_stages.loc[neuroon_stages['stage_shift'] == 'short', :]
+    extra_starts.loc[:,'timestamp'] = extra_starts.loc[:,'timestamp'] - dt.timedelta(milliseconds = (1000 * 30) -1)
+    extra_starts.loc[:,'stage_shift'] = 'start'
+    # Add the extra start rows for short events to the main data frame
+    neuroon_stages = neuroon_stages.append(extra_starts, ignore_index = True)
+    # Sort by timestamp to have correct event order
+    neuroon_stages = neuroon_stages.sort(columns = 'timestamp')
+    # Rename the shorts to ends
+    neuroon_stages.loc[neuroon_stages['stage_shift'] == 'short', 'stage_shift'] = 'end' 
+                                    
     # Add the column with string names for stages
     neuroon_stages['stage_name'] = neuroon_stages['stage_num'].replace(num_to_stage)
-
+    
+    # Set index to be the time for either stages starts and ends.
     neuroon_stages.set_index(neuroon_stages['timestamp'], inplace = True, drop = True)
         
-    # Drop the columns used for stage_shift calculation and the timestamp since it's the index now
+    # Drop the columns used for stage_shift calculation 
     neuroon_stages.drop(['stage_start', 'stage_end', 'stage'], axis = 1, inplace = True)
     
-    # Drop 30 second lasting stages - only 9 of these. They make the event number uneven, thus difficult to assign, and are different to compare than stages with start and stop timestamps
-    neuroon_stages = neuroon_stages.loc[neuroon_stages['stage_shift'] != 'short', :]
     
     #Add unique event number for each phase occurence
-    neuroon_stages['event_number'] = np.array([[i]*2 for i in range(len(neuroon_stages) /2)]).flatten()
-    
-    neuroon_stages.to_csv('parsed_data/' + 'neuroon_hipnogram.csv', index = False)
+    neuroon_stages['event_number'] = np.array([[i]*2 for i in range(int(len(neuroon_stages) /2))]).flatten()
+    if permute == False:
+        neuroon_stages.to_csv('parsed_data/' + 'neuroon_hipnogram.csv', index = False)
 
     return neuroon_stages
 
@@ -116,16 +131,16 @@ def parse_psg_stages():
     
     psg_stages.set_index(psg_stages['timestamp'], inplace = True, drop = True)
 
+    # Drop the columns used for stage_shift calculation 
     psg_stages.drop(['hour', 'order', 'stage'], axis = 1, inplace = True)
     
     #Add unique event number for each phase occurence
     psg_stages['event_number'] = np.array([[i]*2 for i in range(len(psg_stages) /2)]).flatten()
 
-
     psg_stages.to_csv('parsed_data/' +'psg_hipnogram.csv', index = False)
     return psg_stages
     
-def prep_for_phases(hipnogram):
+def prep_for_stages_intersection(hipnogram):
     hipnogram = hipnogram.reset_index(drop = True)
     
     grouped = hipnogram.groupby('stage_shift', as_index=False)

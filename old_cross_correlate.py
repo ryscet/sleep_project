@@ -40,8 +40,8 @@ def compute_shift(x, y):
 
 
 def cross_correlate():
-    psg_description = '%i_minute_psg_%s' %(10, 'F3-A2')
-    neuroon_description = '%i_minute_neuroon' %10
+    psg_description = '%i_minute_psg_%s' %(30, 'F3-A2')
+    neuroon_description = '%i_minute_neuroon' %30
     
     psg_slices = np.load('parsed_data/numpy_slices/' + psg_description + '_slices.npy')
     neuroon_slices = np.load('parsed_data/numpy_slices/' + neuroon_description + '_slices.npy')
@@ -150,9 +150,9 @@ def save_slices():
     psg = load_channel(channel_name)
     neuroon = pd.Series.from_csv('parsed_data/neuroon_parsed.csv')
     
-    for slice_len in [(1/60.0),(1/6.0)]:
-        make_time_slices('%.2f_minute_psg_%s' %(round(slice_len, 2), channel_name), slice_len , psg)
-        make_time_slices('%.2f_minute_neuroon'% round(slice_len, 2), slice_len , neuroon)
+    for slice_len in [60]:
+        make_time_slices('%i_minute_psg_%s' %(slice_len, channel_name), slice_len, psg)
+        make_time_slices('%i_minute_neuroon'%slice_len, slice_len , neuroon)
 
 def make_time_slices(description, minute_length, sig):
     """Make slices of equal length and duration for cross correlation between psg and neuroon recording.
