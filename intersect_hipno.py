@@ -20,14 +20,14 @@ stage_color_dict = {'N1' : 'royalblue', 'N2' :'forestgreen', 'N3' : 'coral', 're
 
     
 def intersect_shift():
-    psg_hipno = ph.parse_psg_stages()
-    noo_hipno = ph.parse_neuroon_stages()
+    psg_hipnogram = ph.parse_psg_stages()
+    neuroon_hipnogram = ph.parse_neuroon_stages()
     
     intersection = OrderedDict([('wake', []), ('rem',[]), ('N1',[]), ('N2',[]), ('N3', []), ('stages_sum', [])])
 
     shift_range = np.arange(-500, 100, 10)
     for shift in shift_range:
-        sums, _, _ = get_hipnogram_intersection(noo_hipno.copy(), psg_hipno.copy(), shift)
+        sums, _, _ = get_hipnogram_intersection(neuroon_hipnogram.copy(), psg_hipnogram.copy(), shift)
         for stage, intersect_dur in sums.items():
             intersection[stage].append(intersect_dur)
     
@@ -36,6 +36,9 @@ def intersect_shift():
 
 
 def plot_intersection(intersection, shift_range):
+    
+    stage_color_dict = {'N1' : 'royalblue', 'N2' :'forestgreen', 'N3' : 'coral', 'rem' : 'plum', 'wake' : 'lightgrey', 'stages_sum': 'dodgerblue'}
+
     
     fig, axes = plt.subplots(2)
     fig.suptitle('Neuroon-Psg overlap with time offset')
@@ -59,7 +62,7 @@ def plot_intersection(intersection, shift_range):
     zscore_ax.grid(b=False)
     zscore_ax.legend()
         
-    sums0, means0, stds0  = get_hipnogram_intersection(noo_hipno.copy(), psg_hipno.copy(), 0)
+    sums0, means0, stds0  = get_hipnogram_intersection(neuroon_hipnogram.copy(), psg_hipnogram.copy(), 0)
 #
     width = 0.35 
     ind = np.arange(5)
@@ -68,7 +71,7 @@ def plot_intersection(intersection, shift_range):
     axes[1].bar(left = ind, height = list(sums0.values()),width = width, alpha = 0.8, 
                 tick_label =list(sums0.keys()), edgecolor = 'black', color= colors_inorder)
 
-    sumsMax, meansMax, stdsMax  = get_hipnogram_intersection(noo_hipno.copy(), psg_hipno.copy(),  max_overlap)
+    sumsMax, meansMax, stdsMax  = get_hipnogram_intersection(neuroon_hipnogram.copy(), psg_hipnogram.copy(),  max_overlap)
     # Plot the shifted overlaps
     axes[1].bar(left = ind +width, height = list(sumsMax.values()),width = width, alpha = 0.8,
                  tick_label =list(sumsMax.keys()), edgecolor = 'black', color = colors_inorder)
@@ -88,13 +91,13 @@ def plot_intersection(intersection, shift_range):
 
         
 
-def get_hipnogram_intersection(noo_hipno, psg_hipno, time_shift):
+def get_hipnogram_intersection(neuroon_hipnogram, psg_hipnogram, time_shift):
 
     # Weird behavior with python 3, says TypeError: unsupported type for timedelta seconds component: numpy.int64. Casting to int solves it
-    noo_hipno.index = noo_hipno.index + timedelta(seconds = int(time_shift))
+    neuroon_hipnogram.index = neuroon_hipnogram.index + timedelta(seconds = int(time_shift))
 
     
-    combined = psg_hipno.join(noo_hipno, how = 'outer', lsuffix = '_psg', rsuffix = '_neuro')
+    combined = psg_hipnogram.join(neuroon_hipnogram, how = 'outer', lsuffix = '_psg', rsuffix = '_neuro')
     
     combined.loc[:, ['stage_num_psg', 'stage_name_psg', 'stage_num_neuro', 'stage_name_neuro', 'event_number_psg', 'event_number_neuro']] = combined.loc[:, ['stage_num_psg', 'stage_name_psg', 'stage_num_neuro', 'stage_name_neuro', 'event_number_psg', 'event_number_neuro']].fillna( method = 'bfill')        
     
@@ -107,7 +110,7 @@ def get_hipnogram_intersection(noo_hipno, psg_hipno, time_shift):
     same_stage.loc[:, 'event_union'] = same_stage['event_number_psg'] + same_stage['event_number_neuro']
 
 
-#    common_window = np.array([noo_hipno.tail(1).index.get_values()[0] - psg_hipno.head(1).index.get_values()[0]],dtype='timedelta64[m]').astype(int)[0]
+#    common_window = np.array([neuroon_hipnogram.tail(1).index.get_values()[0] - psg_hipnogram.head(1).index.get_values()[0]],dtype='timedelta64[m]').astype(int)[0]
 
     all_durations = OrderedDict()
 
@@ -152,38 +155,38 @@ def get_hipnogram_intersection(noo_hipno, psg_hipno, time_shift):
         
     #results = preapre_results(all_durations)
 
-    fig, axes = plt.subplots(1,2, figsize = (20,10))
-    fig.suptitle('Neuroon-psg hinogram comparison', fontweight = 'bold')
-    
-    axes[1].bar(left = [1,2,3], height = list(means.values()),width = 0.3, alpha = 0.8, align = 'center', color = [stage_color_dict['N2'], stage_color_dict['N3'], stage_color_dict['rem']], tick_label = list(means.keys()), edgecolor = 'black')
-    
-    (_, caps, _) = axes[1].errorbar([1,2,3], list(means.values()),  yerr= list(stds.values()), fmt='none', ecolor = 'black', alpha = 0.8, elinewidth = 0.8, linestyle = '-.')
-    
-    axes[1].set_xlim(0.49, 3.51)
-    axes[1].set_ylabel('Average hipnogram overlap in minutes')
-    axes[1].set_xlabel('sleep stage')
-    
-
-    axes[0].bar(left = [1,2,3], height = list(sums.values()),width = 0.3, alpha = 0.8, align = 'center', color = [stage_color_dict['N2'], stage_color_dict['N3'], stage_color_dict['rem']], tick_label = list(means.keys()), edgecolor = 'black')
-
-
-    y_min, y_max =axes[0].get_ylim()
-    percent_max = int(y_max / common_window * 100)
-    ax2=axes[0].twinx()
-    ax2.set_yticks(np.linspace(0, percent_max , 3))
-    ax2.set_yticklabels(['%i%%' %i for i in np.linspace(0, percent_max , 3)])
-    ax2.grid(b = False)
-    print(percent_max)
-    #ax2.set_yticks(range(0, percent_max , 5))
-    
-    axes[0].set_ylabel('Total hipnogram overlap in minutes')
-    
-
-    
-    for cap in caps:
-        cap.set_color('black')
-        cap.set_markeredgewidth(1)
-        
-    raise_window()
-
-    fig.savefig('figures/hipnogram_comparison/hipno_overlap.pdf')
+#    fig, axes = plt.subplots(1,2, figsize = (20,10))
+#    fig.suptitle('Neuroon-psg hinogram comparison', fontweight = 'bold')
+#    
+#    axes[1].bar(left = [1,2,3], height = list(means.values()),width = 0.3, alpha = 0.8, align = 'center', color = [stage_color_dict['N2'], stage_color_dict['N3'], stage_color_dict['rem']], tick_label = list(means.keys()), edgecolor = 'black')
+#    
+#    (_, caps, _) = axes[1].errorbar([1,2,3], list(means.values()),  yerr= list(stds.values()), fmt='none', ecolor = 'black', alpha = 0.8, elinewidth = 0.8, linestyle = '-.')
+#    
+#    axes[1].set_xlim(0.49, 3.51)
+#    axes[1].set_ylabel('Average hipnogram overlap in minutes')
+#    axes[1].set_xlabel('sleep stage')
+#    
+#
+#    axes[0].bar(left = [1,2,3], height = list(sums.values()),width = 0.3, alpha = 0.8, align = 'center', color = [stage_color_dict['N2'], stage_color_dict['N3'], stage_color_dict['rem']], tick_label = list(means.keys()), edgecolor = 'black')
+#
+#
+#    y_min, y_max =axes[0].get_ylim()
+#    percent_max = int(y_max / common_window * 100)
+#    ax2=axes[0].twinx()
+#    ax2.set_yticks(np.linspace(0, percent_max , 3))
+#    ax2.set_yticklabels(['%i%%' %i for i in np.linspace(0, percent_max , 3)])
+#    ax2.grid(b = False)
+#    print(percent_max)
+#    #ax2.set_yticks(range(0, percent_max , 5))
+#    
+#    axes[0].set_ylabel('Total hipnogram overlap in minutes')
+#    
+#
+#    
+#    for cap in caps:
+#        cap.set_color('black')
+#        cap.set_markeredgewidth(1)
+#        
+#    raise_window()
+#
+#    fig.savefig('figures/hipnogram_comparison/hipno_overlap.pdf')
