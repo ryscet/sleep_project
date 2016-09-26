@@ -207,6 +207,67 @@ def plot_roc(all_confusion_matrix, all_cl_params, plot_tables = False):
                 ax.xaxis.set_visible(False) 
                 ax.yaxis.set_visible(False)
                 fig.savefig('figures/roc/cm_%s.pdf'%stage)
+
+def plot_spectra_by_stage(spectra, frequency,psg_or_noo, min_freq = 1, max_freq =3):
+
+    fig, axes = plt.subplots(2)
+    fig.suptitle('neuroon', fontweight = ('bold'))
+    axes[0].set_xlabel('Frequency (Hz)')
+    axes[0].set_ylabel('Log power spectral density')
+    
+    axes[1].set_xlabel('sleep stage')
+    axes[1].set_ylabel('Delta band power')
+    
+    
+    for stage_name, spectrum in spectra.items():
+        #if(stage_name != 'wake'):
+            # limit the plot to 0hz - 50hz range
+        max_idx = np.argmax(frequency[stage_name][0]  > 50)
+    #    for pxx, f in zip(spectrum, frequency):
+          #  axes.plot(f, np.log(pxx), color = color_dict[stage_name], alpha = 0.1)
+        grand_avg = np.log(spectrum).mean(axis = 0)
+        std =np.log(spectrum).std(axis = 0)
+        # Select only part of frequencies
+        grand_avg = grand_avg[0:max_idx]
+#            print(len(grand_avg))
+
+        std = std[0:max_idx]
+        #frequency = frequency[stage_name][0]
+#           
+        lim_freq = frequency[stage_name][0][0:max_idx]
+        #print(len(frequency))
+
+
+        axes[0].plot(lim_freq, grand_avg ,color = stage_color_dict[stage_name], label = stage_name)
+
+        axes[0].fill_between(lim_freq, grand_avg - std, grand_avg + std, color = stage_color_dict[stage_name], alpha = 0.2)
+        axes[0].legend()
+        
+    band = select_band(spectra, frequency['N2'][0],min_freq, max_freq)
+
+    ax = sns.boxplot(data =list(band.values()), ax = axes[1])
+
+
+    for box, stage in zip(ax.artists, list(band.keys())):
+        box.set_facecolor(stage_color_dict[stage])
+        box.set_alpha(0.8)
+    axes[1].set_xticklabels(list(band.keys()))
+
+    return band
+
+def select_band(spectrum, frequencies, min_freq, max_freq):
+
+
+    min_freq = np.argmax(frequencies > min_freq)
+    max_freq = np.argmax(frequencies > max_freq)
+
+    band = OrderedDict()
+    for stage_name, stage_spectrum in spectrum.items():
+        
+    # Define band as the sum of the power in the bins falling between min and max frequency
+        band[stage_name] = np.log(stage_spectrum[:, min_freq : max_freq]).sum(axis = 1)
+
+    return band
     
     
 

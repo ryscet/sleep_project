@@ -19,9 +19,17 @@ try:
     print('loaded')
 except:
     print('loading')
-    neuroon_raw = pd.read_csv('neuroon_signals/night_01/neuroon_stages.csv', index_col = 0)
     
-def parse_neuroon_stages(permute = False, time_shift = 0):
+def parse_neuroon_stages(permute = False, time_shift = 0, night = 1):
+
+    if night == 1 :
+        neuroon_raw = pd.read_csv('neuroon_signals/night_01/neuroon_stages.csv', index_col = 0)
+    elif night ==2 :
+        neuroon_raw = pd.read_csv('neuroon_signals/night_02/neuroon_stages.csv', index_col = 0)
+
+
+
+
     neuroon_stages = neuroon_raw.copy()
     
     # permute the stage number before binning into stages to simulate random assignment into stages - it proably is not random originally because we can see different average durations for different phases, i.e. rem is longer and continous or something  of a sort
@@ -85,7 +93,7 @@ def parse_neuroon_stages(permute = False, time_shift = 0):
     return neuroon_stages
 
 
-def parse_psg_stages():
+def parse_psg_stages(night = 1):
     psg_stages = pd.read_csv('neuroon_signals/night_01/psg_stages.csv', \
                              header = None, names = ['timestamp', 'stage'])
 
@@ -105,8 +113,13 @@ def parse_psg_stages():
     # Find the index where the day changes, i.e. the first time the hour is greater than 00:00:00
     new_date = np.where(psg_stages['hour'] == 0)[0][0]
     # Add the day info to the datetime, accounting for the change after midnight
-    psg_stages.iloc[0 : new_date, 0] = '2016-06-20 ' + psg_stages.iloc[0 : new_date, 0]
-    psg_stages.iloc[new_date::, 0] = '2016-06-21 ' + psg_stages.iloc[new_date ::, 0]
+    if night == 1:
+        psg_stages.iloc[0 : new_date, 0] = '2016-06-20 ' + psg_stages.iloc[0 : new_date, 0]
+        psg_stages.iloc[new_date::, 0] = '2016-06-21 ' + psg_stages.iloc[new_date ::, 0]
+    elif night ==2:
+        psg_stages.iloc[0 : new_date, 0] = '2016-06-21 ' + psg_stages.iloc[0 : new_date, 0]
+        psg_stages.iloc[new_date::, 0] = '2016-06-22 ' + psg_stages.iloc[new_date ::, 0]
+
 
     # Convert the string timestamp to datetime object
     psg_stages['timestamp'] =  pd.to_datetime(psg_stages['timestamp'],format = '%Y-%m-%d %H:%M:%S.%f')
@@ -135,7 +148,7 @@ def parse_psg_stages():
     psg_stages = psg_stages.append(psg_copy).sort('order')
     
     # Deal with the last timestamp which is Nan because of .shift() function
-    psg_stages.iloc[-1, psg_stages.columns.get_loc('timestamp')] = psg_stages.iloc[-2, psg_stages.columns.get_loc('timestamp')] - pd.Timedelta(milliseconds = 1)
+    psg_stages.iloc[-1, psg_stages.columns.get_loc('timestamp')] = psg_stages.iloc[-2, psg_stages.columns.get_loc('timestamp')] + pd.Timedelta(milliseconds = 1)
 
     
     psg_stages.set_index(psg_stages['timestamp'], inplace = True)
@@ -149,7 +162,7 @@ def parse_psg_stages():
     psg_stages.to_csv('parsed_data/' +'psg_hipnogram.csv', index = False)
     return psg_stages
     
-def prep_for_phases(hipnogram):
+def prep_for_spectral(hipnogram):
     hipnogram = hipnogram.reset_index(drop = True)
     
     grouped = hipnogram.groupby('stage_shift', as_index=False)
@@ -160,30 +173,3 @@ def prep_for_phases(hipnogram):
     starts.rename(columns = {'timestamp':'starts'}, inplace = True)
     
     return starts
-
-
-def plot_hipnograms():
-
-    plt.style.use('ggplot')
-    psg = parse_psg_stages()
-    neur = parse_neuroon_stages()
-
-    fig, axes = plt.subplots(2, sharex = True, sharey = True)
-    axes[0].plot(neur['timestamp'] , neur['stage'], color = 'blue', alpha = 0.7, label = 'NeuroOn')
-    axes[1].plot(psg['timestamp'], psg['stage_num'], color = 'green', alpha = 0.7, label = 'PSG')
-
-    axes[0].set_ylabel('NeuroOn hipnogram')
-    axes[1].set_ylabel('PSG hipnogram')
-
-    axes[1].set_xlabel('sleep time')
-
-    axes[0].set_ylim(-0.1, 4.1)
-    plt.yticks(range(0, 5), ['awake', 'REM', 'stage 1', 'stage 2', 'stage 3'])
-    plt.legend()
-
-   # fig2, axes2 = plt.subplots()
-
-    #axes2.plot(neur['stage'].reindex(neur['timestamp']) - psg['stage'].reindex(psg['parsed_timestamp']))
-
-
-
