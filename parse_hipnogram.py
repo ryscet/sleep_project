@@ -13,8 +13,7 @@ import datetime as dt
 stage_to_num = {'W':5, 'R':1, 'N1':2 , 'N2':3, 'N3':4 }
 num_to_stage = {5: 'wake', 1 : 'rem', 2 :'N1', 3 : 'N2', 4: 'N3'}
 
-#
-#
+
 try:
     neuroon_raw
     print('loaded')
@@ -22,7 +21,7 @@ except:
     print('loading')
     neuroon_raw = pd.read_csv('neuroon_signals/night_01/neuroon_stages.csv', index_col = 0)
     
-def parse_neuroon_stages(permute = False):
+def parse_neuroon_stages(permute = False, time_shift = 0):
     neuroon_stages = neuroon_raw.copy()
     
     # permute the stage number before binning into stages to simulate random assignment into stages - it proably is not random originally because we can see different average durations for different phases, i.e. rem is longer and continous or something  of a sort
@@ -30,7 +29,8 @@ def parse_neuroon_stages(permute = False):
         neuroon_stages.loc[:, 'stage'] = np.random.permutation(neuroon_stages['stage'].as_matrix())
         
     # add two hours because time was saved in a different timezone
-    neuroon_stages['timestamp'] = pd.to_datetime(neuroon_stages['timestamp'].astype(int), unit='ms', utc=True) + pd.Timedelta(hours = 2)
+    neuroon_stages['timestamp'] = pd.to_datetime(neuroon_stages['timestamp'].astype(int), unit='ms', utc=True) \
+    + pd.Timedelta(hours = 2) + pd.Timedelta(seconds = time_shift) 
 
     # Change from negative to positive stages coding
     neuroon_stages.loc[:, 'stage_num'] = np.abs(neuroon_stages['stage'])
@@ -69,13 +69,15 @@ def parse_neuroon_stages(permute = False):
     # Rename the shorts to ends
     neuroon_stages.loc[neuroon_stages['stage_shift'] == 'short', 'stage_shift'] = 'end' 
 
-    # Drop the columns used for stage_shift calculation
-    neuroon_stages.drop(['stage_start', 'stage_end', 'stage'], axis = 1, inplace = True)
+   
     
     neuroon_stages.set_index(neuroon_stages['timestamp'], inplace = True)
 
     #Add unique event number for each phase occurence
     neuroon_stages['event_number'] = np.array([[i]*2 for i in range(int(len(neuroon_stages) /2))]).flatten()
+    
+     # Drop the columns used for stage_shift calculation
+    neuroon_stages.drop(['stage_start', 'stage_end', 'stage'], axis = 1, inplace = True)
     
     if permute == False:
         neuroon_stages.to_csv('parsed_data/neuroon_hipnogram.csv', index = False)
@@ -136,13 +138,13 @@ def parse_psg_stages():
     psg_stages.iloc[-1, psg_stages.columns.get_loc('timestamp')] = psg_stages.iloc[-2, psg_stages.columns.get_loc('timestamp')] - pd.Timedelta(milliseconds = 1)
 
     
-    psg_stages.set_index(psg_stages['timestamp'], inplace = True, drop = True)
+    psg_stages.set_index(psg_stages['timestamp'], inplace = True)
 
-    psg_stages.drop(['hour', 'order', 'stage'], axis = 1, inplace = True)
     
     #Add unique event number for each phase occurence
     psg_stages['event_number'] = np.array([[i]*2 for i in range(int(len(psg_stages) / 2))]).flatten()
 
+    psg_stages.drop(['hour', 'order', 'stage'], axis = 1, inplace = True)
 
     psg_stages.to_csv('parsed_data/' +'psg_hipnogram.csv', index = False)
     return psg_stages
