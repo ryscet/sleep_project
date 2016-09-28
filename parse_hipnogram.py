@@ -98,7 +98,6 @@ def parse_psg_stages(night = 1):
         path = 'neuroon_signals/night_01/psg_stages.csv'
     elif(night == 2):
         path = 'neuroon_signals/night_02/psg_stages.csv'
-    print(path)
     psg_stages = pd.read_csv(path, header = None, names = ['timestamp', 'stage'])
 
     # Select only the rows describing the sleep stage
