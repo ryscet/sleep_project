@@ -12,6 +12,7 @@ entrypoints==0.2.2
 enum34==1.1.6
 functools32==3.2.3.post2
 future==0.15.2
+h5py==2.6.0
 ipykernel==4.5.0
 ipython==5.1.0
 ipython-genutils==0.1.0
