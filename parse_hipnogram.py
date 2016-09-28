@@ -94,8 +94,12 @@ def parse_neuroon_stages(permute = False, time_shift = 0, night = 1):
 
 
 def parse_psg_stages(night = 1):
-    psg_stages = pd.read_csv('neuroon_signals/night_01/psg_stages.csv', \
-                             header = None, names = ['timestamp', 'stage'])
+    if(night == 1):
+        path = 'neuroon_signals/night_01/psg_stages.csv'
+    elif(night == 2):
+        path = 'neuroon_signals/night_02/psg_stages.csv'
+    print(path)
+    psg_stages = pd.read_csv(path, header = None, names = ['timestamp', 'stage'])
 
     # Select only the rows describing the sleep stage
     psg_stages = psg_stages.loc[psg_stages['stage'].str.contains('Stage'), :]

@@ -19,11 +19,15 @@ from itertools import tee
 
 ################--------------- PSG PARSING START ------------------###########################
 
-def psg_to_hdf():
+def psg_to_hdf(night = 1):
     """Opens the psg edf file and parses it into a hdf5 database - this way a single channel can be loaded.
         to load a single channel use the hdf_to_series() function"""
     
-    path = 'neuroon_signals/night_01/psg_signal.edf'
+    if(night == 1):
+        path = 'neuroon_signals/night_01/psg_signal.edf'
+    elif(night == 2):
+        path = 'neuroon_signals/night_02/psg_signal.edf'
+
     # open the edf
     f = pyedflib.EdfReader(path)
     # Get channle names
@@ -53,9 +57,11 @@ def psg_to_hdf():
 
     # Close edf reader to avoid malloc errors on consecutive calls to this function
     f._close()
-    
-    sig_to_hdf(signal_dict, 'parsed_data/hdf/psg_database.h5')
-    
+    if(night == 1):
+        sig_to_hdf(signal_dict, 'parsed_data/hdf/psg_night_1_database.h5')
+    elif(night == 2):
+        sig_to_hdf(signal_dict, 'parsed_data/hdf/psg_night_2_database.h5')
+
     return signal_dict
     
 def sig_to_hdf(_dict, path):
@@ -65,11 +71,16 @@ def sig_to_hdf(_dict, path):
             print(key)
             hf.create_dataset(key, data = value)
             
-def load_psg(channel, cut_to_match = False):
+def load_psg(channel,night = 1, cut_to_match = False):
     """Loads a single channel from the hdf database of psg channels. Combines the signal with a timestamp and returns a pandas.Series object"""
     
-    path = 'parsed_data/hdf/psg_database.h5'
     
+    if(night == 1):
+        path = 'parsed_data/hdf/psg_night_1_database.h5'
+    elif(night == 2):
+        path = 'parsed_data/hdf/psg_night_2_database.h5'
+
+
     with h5py.File(path, 'r') as hf:
         data = np.array(hf.get(channel))
         timestamp = pd.to_datetime(np.array(hf.get('psg_timestamp')))
@@ -92,15 +103,24 @@ def load_psg(channel, cut_to_match = False):
 
 ################--------------- NEUROON PARSING START ------------------###########################
 
-def neuroon_to_hdf():
-    neuroon = pd.Series.from_csv('neuroon_signals/night_01/neuroon_signal.csv',header = 0, infer_datetime_format=True)
+def neuroon_to_hdf(night = 1):
+    if(night == 1):
+        path = 'neuroon_signals/night_01/neuroon_signal.csv'
+    elif (night == 2):
+        path = 'neuroon_signals/night_02/neuroon_signal.csv'
+
+    neuroon = pd.Series.from_csv(path,header = 0, infer_datetime_format=True)
     # Add the twp hours differnece based on time-zone mismatch between recording devices
     neuroon.index = pd.to_datetime(neuroon.index.astype(int), unit='ms') + pd.Timedelta(hours = 2)
     
     # now in nanoVolts, scale to microVolts
     neuroon = neuroon / 1000.0
     
-    path = 'parsed_data/hdf/neuroon_database.h5'
+    if(night == 1):
+        path = 'parsed_data/hdf/neuroon_night_1_database.h5'
+    elif(night ==2):
+        path = 'parsed_data/hdf/neuroon_night_2_database.h5'
+
 
     with h5py.File(path, 'w') as hf:
         hf.create_dataset('neuroon', data = neuroon.as_matrix())
@@ -109,9 +129,13 @@ def neuroon_to_hdf():
         
 
 
-def load_neuroon(shift_time = None, cut_to_match = False):
+def load_neuroon(shift_time = None, night = 1, cut_to_match = False):
     
-    path = 'parsed_data/hdf/neuroon_database.h5'
+    
+    if(night == 1):
+        path = 'parsed_data/hdf/neuroon_night_1_database.h5'
+    elif(night ==2):
+        path = 'parsed_data/hdf/neuroon_night_2_database.h5'
     
     with h5py.File(path, 'r') as hf:
         data = np.array(hf.get('neuroon'))
@@ -137,6 +161,7 @@ def load_neuroon(shift_time = None, cut_to_match = False):
     
 ################--------------- NEUROON PARSING END ------------------###########################
 
+###---------UNIMPORTANT BELOW, not used --------------------#############
 
     
     
@@ -157,7 +182,6 @@ def stages_to_hdf():
     
     spectra_to_hdf(neuroon_spectra, 'neuroon', path, neuroon_frequency['N2'][0,:])
     
-
             
     
 def make_stage_slices(sampling_rate, hipno, signal, channel):

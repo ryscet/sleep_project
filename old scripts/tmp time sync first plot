@@ -1,0 +1,24 @@
+psg_signal =  load_psg('F3-A2')
+neuroon_signal =  load_neuroon()
+    
+psg_10 = psg_signal.resample('10ms').mean()
+neuroon_10 = neuroon_signal.resample('10ms').mean()    
+
+neuroon_cut = neuroon_10.between_time('23:00','06:00')
+psg_cut = psg_10.between_time('23:00','06:00')
+
+shift, crosscorr = compute_shift(neuroon_cut, psg_cut)
+
+
+
+fig, axes = plt.subplots()
+axes.plot(crosscorr)
+axes.set_xlim(0, len(crosscorr))
+
+zero_index = int(len(crosscorr) / 2) - 1
+axes.axvline(zero_index, color = 'blue', linestyle = '--')
+
+axes.set_title('Neuroon psg crosscorrelation')
+axes.set_xlabel('time shift')
+
+print('max shift at: %i'%shift)
