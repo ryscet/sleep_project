@@ -24,5 +24,5 @@ We have divided the Neuroon validation into three stages:
 
 
 
-<img  style="float: left;" src="https://github.com/ryscet/sleep_project/blob/master/figures/spectral.png">
+<img  style="float: left;" src="https://github.com/ryscet/sleep_project/blob/master/figures/spectral2.png">
 
