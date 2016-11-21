@@ -12,7 +12,7 @@ We have divided the Neuroon validation into three stages:
 
 
 2. [Second](https://github.com/ryscet/sleep_project/blob/master/Hipnogram_comparison.ipynb) we assessed accuracy with which Neuroon predicted the sleep stage. 
-<img align="right" src="https://github.com/ryscet/sleep_project/blob/master/figures/hipno_cm.png">
+<img align="left" src="https://github.com/ryscet/sleep_project/blob/master/figures/hipno_cm.png">
 
 3. [Third](https://github.com/ryscet/sleep_project/blob/master/Spectral%20analysis.ipynb) we assessed whether there is enough information in the EEG signal to discriminate on that basis between the sleep stages.
 ![alt text](https://github.com/ryscet/sleep_project/blob/master/figures/spectral.png
